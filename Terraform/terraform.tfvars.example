@@ -1,0 +1,7 @@
+# terraform.tfvars.example - Template file (safe to commit)
+auth0_domain         = "your-tenant.auth0.com"
+auth0_client_id      = "your_auth0_management_client_id"
+auth0_client_secret  = "your_auth0_management_client_secret"
+google_client_id     = "your_google_client_id.googleusercontent.com"
+google_client_secret = "your_google_client_secret"
+app_domain          = "vibesheets.com"
