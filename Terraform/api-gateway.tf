@@ -1,85 +1,41 @@
-# API Gateway Configuration
+# API Gateway REST API
+resource "aws_api_gateway_rest_api" "api" {
+  name        = "${var.project_name}-api-${var.environment}"
+  description = "VibeSheets Timesheet API"
 
-# Auth API Gateway
-resource "aws_api_gateway_rest_api" "auth_api" {
-  name        = "${var.app_name}-auth-api"
-  description = "API for ${var.app_name} authentication configuration"
-  
   endpoint_configuration {
     types = ["REGIONAL"]
   }
-
-  tags = var.common_tags
 }
 
-# Auth API Gateway resource
-resource "aws_api_gateway_resource" "auth_config_resource" {
-  rest_api_id = aws_api_gateway_rest_api.auth_api.id
-  parent_id   = aws_api_gateway_rest_api.auth_api.root_resource_id
-  path_part   = "config"
-}
-
-# Auth API Gateway methods
-resource "aws_api_gateway_method" "auth_config_method" {
-  rest_api_id   = aws_api_gateway_rest_api.auth_api.id
-  resource_id   = aws_api_gateway_resource.auth_config_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "auth_config_options" {
-  rest_api_id   = aws_api_gateway_rest_api.auth_api.id
-  resource_id   = aws_api_gateway_resource.auth_config_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-# Auth API Gateway integrations
-resource "aws_api_gateway_integration" "auth_config_integration" {
-  rest_api_id = aws_api_gateway_rest_api.auth_api.id
-  resource_id = aws_api_gateway_resource.auth_config_resource.id
-  http_method = aws_api_gateway_method.auth_config_method.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.auth_config.invoke_arn
-}
-
-resource "aws_api_gateway_integration" "auth_config_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.auth_api.id
-  resource_id = aws_api_gateway_resource.auth_config_resource.id
-  http_method = aws_api_gateway_method.auth_config_options.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.auth_config.invoke_arn
-}
-
-# Lambda permission for auth API Gateway
-resource "aws_lambda_permission" "auth_config_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.auth_config.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.auth_api.execution_arn}/*/*"
-}
-
-# Auth API Gateway deployment
-resource "aws_api_gateway_deployment" "auth_api_deployment" {
-  depends_on = [
-    aws_api_gateway_integration.auth_config_integration,
-    aws_api_gateway_integration.auth_config_options_integration
-  ]
-
-  rest_api_id = aws_api_gateway_rest_api.auth_api.id
+# API Gateway Deployment
+resource "aws_api_gateway_deployment" "api" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
 
   triggers = {
     redeployment = sha1(jsonencode([
-      aws_api_gateway_resource.auth_config_resource.id,
-      aws_api_gateway_method.auth_config_method.id,
-      aws_api_gateway_method.auth_config_options.id,
-      aws_api_gateway_integration.auth_config_integration.id,
-      aws_api_gateway_integration.auth_config_options_integration.id,
+      aws_api_gateway_resource.auth.id,
+      aws_api_gateway_method.auth_options.id,
+      aws_api_gateway_method.auth_get.id,
+      aws_api_gateway_integration.auth_get.id,
+      aws_api_gateway_resource.clock.id,
+      aws_api_gateway_method.clock_options.id,
+      aws_api_gateway_method.clock_post.id,
+      aws_api_gateway_integration.clock_post.id,
+      aws_api_gateway_resource.status.id,
+      aws_api_gateway_method.status_options.id,
+      aws_api_gateway_method.status_get.id,
+      aws_api_gateway_integration.status_get.id,
+      aws_api_gateway_resource.timesheets.id,
+      aws_api_gateway_method.timesheets_options.id,
+      aws_api_gateway_method.timesheets_get.id,
+      aws_api_gateway_method.timesheets_put.id,
+      aws_api_gateway_integration.timesheets_get.id,
+      aws_api_gateway_integration.timesheets_put.id,
+      aws_api_gateway_resource.export.id,
+      aws_api_gateway_method.export_options.id,
+      aws_api_gateway_method.export_post.id,
+      aws_api_gateway_integration.export_post.id,
     ]))
   }
 
@@ -88,514 +44,488 @@ resource "aws_api_gateway_deployment" "auth_api_deployment" {
   }
 }
 
-# Auth API Gateway stage
-resource "aws_api_gateway_stage" "auth_api_stage" {
-  deployment_id = aws_api_gateway_deployment.auth_api_deployment.id
-  rest_api_id   = aws_api_gateway_rest_api.auth_api.id
-  stage_name    = "prod"
-
-  tags = var.common_tags
+# API Gateway Stage
+resource "aws_api_gateway_stage" "api" {
+  deployment_id = aws_api_gateway_deployment.api.id
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  stage_name    = var.environment
 }
 
-# Auth API Gateway base path mapping
-resource "aws_api_gateway_base_path_mapping" "auth_api_mapping" {
-  api_id      = aws_api_gateway_rest_api.auth_api.id
-  stage_name  = aws_api_gateway_stage.auth_api_stage.stage_name
-  domain_name = aws_api_gateway_domain_name.auth_api_domain.domain_name
-  base_path   = "config"
+# Custom domain for API Gateway
+resource "aws_acm_certificate" "api_ssl_certificate" {
+  domain_name       = "api.${var.domain_name}"
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
-# ===== TIMESHEET API GATEWAY =====
+resource "aws_route53_record" "api_ssl_certificate_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.api_ssl_certificate.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
 
-# Timesheet API Gateway
-resource "aws_api_gateway_rest_api" "timesheet_api" {
-  name        = "${var.app_name}-timesheet-api"
-  description = "API for ${var.app_name} timesheet operations"
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = aws_route53_zone.main.zone_id
+}
+
+resource "aws_acm_certificate_validation" "api_ssl_certificate" {
+  certificate_arn         = aws_acm_certificate.api_ssl_certificate.arn
+  validation_record_fqdns = [for record in aws_route53_record.api_ssl_certificate_validation : record.fqdn]
   
+  timeouts {
+    create = "10m"
+  }
+  
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "aws_api_gateway_domain_name" "api" {
+  domain_name              = "api.${var.domain_name}"
+  regional_certificate_arn = aws_acm_certificate.api_ssl_certificate.arn
+
   endpoint_configuration {
     types = ["REGIONAL"]
   }
-
-  tags = var.common_tags
+  
+  # Note: This will be created with an unvalidated certificate initially
+  # Once DNS nameservers are updated and certificate validates, run terraform apply again
 }
 
-# Timesheet API Gateway resources
-resource "aws_api_gateway_resource" "clock_in_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "clock-in"
+resource "aws_api_gateway_base_path_mapping" "api" {
+  api_id      = aws_api_gateway_rest_api.api.id
+  stage_name  = aws_api_gateway_stage.api.stage_name
+  domain_name = aws_api_gateway_domain_name.api.domain_name
 }
 
-resource "aws_api_gateway_resource" "clock_out_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "clock-out"
+# CORS configuration
+resource "aws_api_gateway_gateway_response" "cors" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  response_type = "DEFAULT_4XX"
+
+  response_templates = {
+    "application/json" = "{'message':$context.error.messageString}"
+  }
+
+  response_parameters = {
+    "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
+    "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'"
+  }
 }
 
-resource "aws_api_gateway_resource" "clock_status_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "clock-status"
+# Auth configuration endpoint
+resource "aws_api_gateway_resource" "auth" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "auth"
 }
 
-resource "aws_api_gateway_resource" "entries_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "entries"
+resource "aws_api_gateway_method" "auth_options" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
 }
 
-resource "aws_api_gateway_resource" "entry_by_id_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_resource.entries_resource.id
-  path_part   = "{entryId}"
+resource "aws_api_gateway_integration" "auth_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.auth.id
+  http_method = aws_api_gateway_method.auth_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{'statusCode': 200}"
+  }
 }
 
-resource "aws_api_gateway_resource" "export_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "export"
+resource "aws_api_gateway_method_response" "auth_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.auth.id
+  http_method = aws_api_gateway_method.auth_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
 }
 
-resource "aws_api_gateway_resource" "hours_resource" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  parent_id   = aws_api_gateway_rest_api.timesheet_api.root_resource_id
-  path_part   = "hours"
+resource "aws_api_gateway_integration_response" "auth_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.auth.id
+  http_method = aws_api_gateway_method.auth_options.http_method
+  status_code = aws_api_gateway_method_response.auth_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
 }
 
-# Timesheet API Gateway methods
-resource "aws_api_gateway_method" "clock_in_post" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_in_resource.id
+resource "aws_api_gateway_method" "auth_get" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.auth.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "auth_get" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.auth.id
+  http_method = aws_api_gateway_method.auth_get.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.auth_config.invoke_arn
+}
+
+resource "aws_lambda_permission" "auth_config" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.auth_config.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
+
+# Clock in/out endpoint
+resource "aws_api_gateway_resource" "clock" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "clock"
+}
+
+resource "aws_api_gateway_method" "clock_options" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.clock.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "clock_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.clock.id
+  http_method = aws_api_gateway_method.clock_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{'statusCode': 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "clock_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.clock.id
+  http_method = aws_api_gateway_method.clock_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "clock_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.clock.id
+  http_method = aws_api_gateway_method.clock_options.http_method
+  status_code = aws_api_gateway_method_response.clock_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "clock_post" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.clock.id
   http_method   = "POST"
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_method" "clock_out_post" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_out_resource.id
-  http_method   = "POST"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "clock_status_get" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_status_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "entries_get" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.entries_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "entry_update" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method   = "PUT"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "entry_delete" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method   = "DELETE"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "export_get" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.export_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "hours_get" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.hours_resource.id
-  http_method   = "GET"
-  authorization = "NONE"
-}
-
-# CORS OPTIONS methods
-resource "aws_api_gateway_method" "clock_in_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_in_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "clock_out_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_out_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "clock_status_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.clock_status_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "entries_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.entries_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "entry_by_id_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "export_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.export_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-resource "aws_api_gateway_method" "hours_options" {
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id   = aws_api_gateway_resource.hours_resource.id
-  http_method   = "OPTIONS"
-  authorization = "NONE"
-}
-
-# Lambda integrations
-resource "aws_api_gateway_integration" "clock_in_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_in_resource.id
-  http_method = aws_api_gateway_method.clock_in_post.http_method
+resource "aws_api_gateway_integration" "clock_post" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.clock.id
+  http_method = aws_api_gateway_method.clock_post.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
   uri                    = aws_lambda_function.clock_in_out.invoke_arn
 }
 
-resource "aws_api_gateway_integration" "clock_out_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_out_resource.id
-  http_method = aws_api_gateway_method.clock_out_post.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.clock_in_out.invoke_arn
+resource "aws_lambda_permission" "clock_in_out" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.clock_in_out.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }
 
-resource "aws_api_gateway_integration" "clock_status_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_status_resource.id
-  http_method = aws_api_gateway_method.clock_status_get.http_method
+# Clock status endpoint
+resource "aws_api_gateway_resource" "status" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "status"
+}
+
+resource "aws_api_gateway_method" "status_options" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.status.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "status_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.status_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{'statusCode': 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "status_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.status_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "status_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.status_options.http_method
+  status_code = aws_api_gateway_method_response.status_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "status_get" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.status.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "status_get" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.status.id
+  http_method = aws_api_gateway_method.status_get.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
   uri                    = aws_lambda_function.clock_status.invoke_arn
 }
 
-resource "aws_api_gateway_integration" "entries_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entries_resource.id
-  http_method = aws_api_gateway_method.entries_get.http_method
+resource "aws_lambda_permission" "clock_status" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.clock_status.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
+
+# Timesheets endpoint
+resource "aws_api_gateway_resource" "timesheets" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "timesheets"
+}
+
+resource "aws_api_gateway_method" "timesheets_options" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.timesheets.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "timesheets_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{'statusCode': 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "timesheets_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "timesheets_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_options.http_method
+  status_code = aws_api_gateway_method_response.timesheets_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,PUT,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "timesheets_get" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.timesheets.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "timesheets_get" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_get.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
   uri                    = aws_lambda_function.get_timesheets.invoke_arn
 }
 
-resource "aws_api_gateway_integration" "entry_update_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method = aws_api_gateway_method.entry_update.http_method
+resource "aws_lambda_permission" "get_timesheets" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.get_timesheets.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
+}
+
+resource "aws_api_gateway_method" "timesheets_put" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.timesheets.id
+  http_method   = "PUT"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "timesheets_put" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_put.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
   uri                    = aws_lambda_function.update_timesheet.invoke_arn
 }
 
-resource "aws_api_gateway_integration" "entry_delete_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method = aws_api_gateway_method.entry_delete.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.update_timesheet.invoke_arn
+resource "aws_lambda_permission" "update_timesheet" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.update_timesheet.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }
 
-resource "aws_api_gateway_integration" "export_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.export_resource.id
-  http_method = aws_api_gateway_method.export_get.http_method
+# Export endpoint
+resource "aws_api_gateway_resource" "export" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  parent_id   = aws_api_gateway_rest_api.api.root_resource_id
+  path_part   = "export"
+}
+
+resource "aws_api_gateway_method" "export_options" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.export.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "export_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.export.id
+  http_method = aws_api_gateway_method.export_options.http_method
+  type        = "MOCK"
+
+  request_templates = {
+    "application/json" = "{'statusCode': 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "export_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.export.id
+  http_method = aws_api_gateway_method.export_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "export_options" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.export.id
+  http_method = aws_api_gateway_method.export_options.http_method
+  status_code = aws_api_gateway_method_response.export_options.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
+resource "aws_api_gateway_method" "export_post" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.export.id
+  http_method   = "POST"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "export_post" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.export.id
+  http_method = aws_api_gateway_method.export_post.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"
   uri                    = aws_lambda_function.export_timesheet.invoke_arn
 }
 
-resource "aws_api_gateway_integration" "hours_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.hours_resource.id
-  http_method = aws_api_gateway_method.hours_get.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.get_timesheets.invoke_arn
-}
-
-# CORS integrations (mock responses) - simplified for main endpoints
-resource "aws_api_gateway_integration" "clock_in_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_in_resource.id
-  http_method = aws_api_gateway_method.clock_in_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-# Add CORS integration for other endpoints
-resource "aws_api_gateway_integration" "entries_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entries_resource.id
-  http_method = aws_api_gateway_method.entries_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_integration" "clock_out_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_out_resource.id
-  http_method = aws_api_gateway_method.clock_out_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_integration" "clock_status_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_status_resource.id
-  http_method = aws_api_gateway_method.clock_status_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_integration" "entry_by_id_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entry_by_id_resource.id
-  http_method = aws_api_gateway_method.entry_by_id_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_integration" "export_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.export_resource.id
-  http_method = aws_api_gateway_method.export_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_integration" "hours_options_integration" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.hours_resource.id
-  http_method = aws_api_gateway_method.hours_options.http_method
-  type        = "MOCK"
-  
-  request_templates = {
-    "application/json" = jsonencode({
-      statusCode = 200
-    })
-  }
-}
-
-resource "aws_api_gateway_method_response" "entries_options_response" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entries_resource.id
-  http_method = aws_api_gateway_method.entries_options.http_method
-  status_code = "200"
-  
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "entries_options_integration_response" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.entries_resource.id
-  http_method = aws_api_gateway_method.entries_options.http_method
-  status_code = aws_api_gateway_method_response.entries_options_response.status_code
-  
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
-    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-  }
-}
-
-resource "aws_api_gateway_method_response" "clock_in_options_response" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_in_resource.id
-  http_method = aws_api_gateway_method.clock_in_options.http_method
-  status_code = "200"
-  
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = true
-    "method.response.header.Access-Control-Allow-Methods" = true
-    "method.response.header.Access-Control-Allow-Origin"  = true
-  }
-}
-
-resource "aws_api_gateway_integration_response" "clock_in_options_integration_response" {
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-  resource_id = aws_api_gateway_resource.clock_in_resource.id
-  http_method = aws_api_gateway_method.clock_in_options.http_method
-  status_code = aws_api_gateway_method_response.clock_in_options_response.status_code
-  
-  response_parameters = {
-    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization'"
-    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'"
-    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
-  }
-}
-
-# Lambda permissions for timesheet API Gateway
-resource "aws_lambda_permission" "clock_in_out_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.clock_in_out.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.timesheet_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "get_timesheets_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.get_timesheets.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.timesheet_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "update_timesheet_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.update_timesheet.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.timesheet_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "export_timesheet_api_gateway" {
+resource "aws_lambda_permission" "export_timesheet" {
   statement_id  = "AllowExecutionFromAPIGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.export_timesheet.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.timesheet_api.execution_arn}/*/*"
-}
-
-resource "aws_lambda_permission" "clock_status_api_gateway" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.clock_status.function_name
-  principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.timesheet_api.execution_arn}/*/*"
-}
-
-# Timesheet API Gateway deployment
-resource "aws_api_gateway_deployment" "timesheet_api_deployment" {
-  depends_on = [
-    aws_api_gateway_integration.clock_in_integration,
-    aws_api_gateway_integration.clock_out_integration,
-    aws_api_gateway_integration.clock_status_integration,
-    aws_api_gateway_integration.entries_integration,
-    aws_api_gateway_integration.entry_update_integration,
-    aws_api_gateway_integration.entry_delete_integration,
-    aws_api_gateway_integration.export_integration,
-    aws_api_gateway_integration.hours_integration,
-    aws_api_gateway_integration.clock_in_options_integration,
-    aws_api_gateway_integration.clock_out_options_integration,
-    aws_api_gateway_integration.clock_status_options_integration,
-    aws_api_gateway_integration.entries_options_integration,
-    aws_api_gateway_integration.entry_by_id_options_integration,
-    aws_api_gateway_integration.export_options_integration,
-    aws_api_gateway_integration.hours_options_integration
-  ]
-
-  rest_api_id = aws_api_gateway_rest_api.timesheet_api.id
-
-  triggers = {
-    redeployment = sha1(jsonencode([
-      aws_api_gateway_resource.clock_in_resource.id,
-      aws_api_gateway_resource.clock_out_resource.id,
-      aws_api_gateway_resource.clock_status_resource.id,
-      aws_api_gateway_resource.entries_resource.id,
-      aws_api_gateway_resource.entry_by_id_resource.id,
-      aws_api_gateway_resource.export_resource.id,
-      aws_api_gateway_resource.hours_resource.id,
-      aws_api_gateway_method.clock_in_post.id,
-      aws_api_gateway_method.clock_out_post.id,
-      aws_api_gateway_method.clock_status_get.id,
-      aws_api_gateway_method.entries_get.id,
-      aws_api_gateway_method.entry_update.id,
-      aws_api_gateway_method.entry_delete.id,
-      aws_api_gateway_method.export_get.id,
-      aws_api_gateway_method.hours_get.id
-    ]))
-  }
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-# Timesheet API Gateway stage
-resource "aws_api_gateway_stage" "timesheet_api_stage" {
-  deployment_id = aws_api_gateway_deployment.timesheet_api_deployment.id
-  rest_api_id   = aws_api_gateway_rest_api.timesheet_api.id
-  stage_name    = "prod"
-
-  tags = var.common_tags
-}
-
-# Timesheet API Gateway base path mapping
-resource "aws_api_gateway_base_path_mapping" "timesheet_api_mapping" {
-  api_id      = aws_api_gateway_rest_api.timesheet_api.id
-  stage_name  = aws_api_gateway_stage.timesheet_api_stage.stage_name
-  domain_name = aws_api_gateway_domain_name.auth_api_domain.domain_name
-  base_path   = "api"
+  source_arn    = "${aws_api_gateway_rest_api.api.execution_arn}/*/*"
 }

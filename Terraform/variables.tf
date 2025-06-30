@@ -1,36 +1,26 @@
-# Terraform Variables for VibeSheets Infrastructure
-
-variable "app_domain" {
-  description = "Application domain"
-  type        = string
-  default     = "vibesheets.com"
-}
-
 variable "aws_region" {
   description = "AWS region"
   type        = string
   default     = "us-east-1"
 }
 
+variable "domain_name" {
+  description = "Domain name for the application"
+  type        = string
+  default     = "vibesheets.com"
+}
+
 variable "environment" {
   description = "Environment name"
   type        = string
-  default     = "production"
+  default     = "prod"
 }
 
-variable "app_name" {
-  description = "Application name"
+variable "project_name" {
+  description = "Name of the project"
   type        = string
   default     = "vibesheets"
 }
 
-# Tags to apply to all resources
-variable "common_tags" {
-  description = "Common tags to apply to all resources"
-  type        = map(string)
-  default = {
-    Application = "Vibesheets"
-    Environment = "production"
-    ManagedBy   = "Terraform"
-  }
-}
+# Note: Auth0 and Google OAuth secrets are stored in AWS Secrets Manager
+# and should be set manually after deployment for security

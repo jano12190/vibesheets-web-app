@@ -1,65 +1,69 @@
-# DynamoDB Configuration
-
-# DynamoDB table for timesheet data
-resource "aws_dynamodb_table" "timesheet_table" {
-  name           = "${var.app_name}-timesheet-data"
+# DynamoDB table for time entries
+resource "aws_dynamodb_table" "time_entries" {
+  name           = "${var.project_name}-time-entries-${var.environment}"
   billing_mode   = "PAY_PER_REQUEST"
-  hash_key       = "PK"
-  range_key      = "SK"
+  hash_key       = "user_id"
+  range_key      = "timestamp"
 
   attribute {
-    name = "PK"
+    name = "user_id"
     type = "S"
   }
 
   attribute {
-    name = "SK"
+    name = "timestamp"
     type = "S"
   }
 
   attribute {
-    name = "GSI1PK"
+    name = "date"
     type = "S"
   }
 
-  attribute {
-    name = "GSI1SK"
-    type = "S"
-  }
-
+  # Global Secondary Index for querying by date
   global_secondary_index {
-    name            = "GSI1"
-    hash_key        = "GSI1PK"
-    range_key       = "GSI1SK"
+    name     = "DateIndex"
+    hash_key = "user_id"
+    range_key = "date"
     projection_type = "ALL"
   }
 
-  tags = var.common_tags
+  tags = {
+    Name        = "${var.project_name}-time-entries"
+    Environment = var.environment
+  }
 }
 
-# IAM policy for DynamoDB access
-resource "aws_iam_policy" "dynamodb_access" {
-  name        = "${var.app_name}-dynamodb-access"
-  description = "Policy to access ${var.app_name} DynamoDB table"
+# DynamoDB table for user settings/preferences
+resource "aws_dynamodb_table" "user_settings" {
+  name         = "${var.project_name}-user-settings-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
 
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ]
-        Resource = [
-          aws_dynamodb_table.timesheet_table.arn,
-          "${aws_dynamodb_table.timesheet_table.arn}/index/*"
-        ]
-      }
-    ]
-  })
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-user-settings"
+    Environment = var.environment
+  }
+}
+
+# DynamoDB table for tracking active sessions (clock in/out status)
+resource "aws_dynamodb_table" "user_sessions" {
+  name         = "${var.project_name}-user-sessions-${var.environment}"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "user_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  tags = {
+    Name        = "${var.project_name}-user-sessions"
+    Environment = var.environment
+  }
 }

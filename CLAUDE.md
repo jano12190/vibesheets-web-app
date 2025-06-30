@@ -4,90 +4,126 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-VibeSheets is a cloud-based timesheet application with a serverless architecture consisting of:
+VibeSheets is a timesheet web application for tracking work hours with the following components:
 
-- **Frontend**: Static HTML/CSS/JavaScript web application hosted on AWS S3 with CloudFront
-- **Backend**: Python AWS Lambda functions for API endpoints
-- **Infrastructure**: Terraform configuration for AWS resources (S3, Lambda, API Gateway, DynamoDB, etc.)
+- **Frontend**: Static HTML/CSS/JS web application with Auth0 authentication
+- **Backend**: AWS Lambda functions (serverless architecture)  
+- **Infrastructure**: AWS resources managed via Terraform
+- **Domain**: vibesheets.com (already purchased)
 
-## Architecture Components
+## Architecture
 
-### Frontend (`/Frontend/`)
-- Pure JavaScript application (no framework)
-- Uses Auth0 for authentication
-- Communicates with Lambda functions via API Gateway
-- Key files:
-  - `dashboard.html` - Main timesheet interface
-  - `index.html` - Login page
-  - `assets/js/dashboard.js` - Core dashboard functionality
-  - `assets/js/login.js` - Authentication handling
+### Frontend Structure
+- `Frontend/index.html` - Login page with Auth0 and Google authentication
+- `Frontend/dashboard.html` - Main timesheet dashboard with clock in/out functionality
+- `Frontend/assets/css/` - Styling (login.css, style.css)
+- `Frontend/assets/js/` - JavaScript files for authentication and dashboard functionality
+- **Missing JavaScript Implementation**: HTML files reference JavaScript functions that need to be implemented
 
-### Backend (`/Backend/`)
-- AWS Lambda functions written in Python
-- DynamoDB for data storage
-- Key functions:
-  - `auth_config.py` - Serves Auth0 configuration from AWS Secrets Manager
-  - `clock_in_out.py` - Handles time tracking (clock in/out operations)
-  - `get_timesheets.py` - Retrieves timesheet data with filtering
-  - `update_timesheet.py` - Modifies existing timesheet entries
-  - `export_timesheet.py` - Exports timesheet data to various formats
+### Backend Structure
+- **Lambda Functions** (in `Terraform/lambda_functions/`):
+  - `auth_config.py` - Returns public Auth0/Google OAuth configuration
+  - `clock_in_out.py` - Handles time clock operations with JWT verification
+  - `clock_status.py` - Returns current user session status
+  - `get_timesheets.py` - Retrieves timesheet data with date filtering
+  - `update_timesheet.py` - Updates existing time entries
+  - `export_timesheet.py` - Exports timesheets to CSV format
+- **DynamoDB Tables**:
+  - `time_entries` - Stores clock in/out records with date indexing
+  - `user_sessions` - Tracks active session status (clocked in/out)
+  - `user_settings` - User preferences and configuration
+- **API Gateway**: REST API with CORS-enabled endpoints at api.vibesheets.com
 
-### Infrastructure (`/Terraform/`)
-- Complete AWS infrastructure as code
-- Includes S3, CloudFront, Lambda, API Gateway, DynamoDB, Route53, ACM certificates
-- Secrets Manager for Auth0 and OAuth credentials
+### Infrastructure
+- `Terraform/` directory contains AWS infrastructure as code
+- Hosted on AWS with CloudFront distribution
+- Route53 DNS management for vibesheets.com domain
+- SSL certificates managed via ACM with DNS validation
 
-## Development Commands
+## Development Workflow
 
-Since this is a serverless application without a traditional build system:
-
-### Frontend Development
-- No build step required - static files served directly
-- Test locally by opening HTML files in browser
-- For production: sync files to S3 bucket
-
-### Backend Development
-- Lambda functions deployed via Terraform or AWS CLI
-- Test locally using AWS SAM or direct Python execution
-- Requirements: `boto3` (included in Lambda runtime)
-
-### Infrastructure Management
+### Infrastructure Commands
 ```bash
-# Deploy infrastructure
-cd Terraform/
+cd Terraform
+
+# Initialize Terraform (first time only)
 terraform init
+
+# Plan changes
 terraform plan
+
+# Apply infrastructure changes
 terraform apply
 
-# Destroy infrastructure
+# Destroy infrastructure (careful!)
 terraform destroy
 ```
 
-## Key Configuration
+### Configuration Setup
+1. Copy `terraform.tfvars.example` to `terraform.tfvars`
+2. Update variables as needed
+3. After deployment, set Auth0/Google secrets:
+```bash
+aws secretsmanager put-secret-value \
+  --secret-id vibesheets-auth-config-prod \
+  --secret-string '{
+    "auth0_domain": "your-domain.auth0.com",
+    "auth0_client_id": "your-client-id", 
+    "auth0_client_secret": "your-client-secret",
+    "google_client_id": "your-google-client-id",
+    "google_client_secret": "your-google-client-secret"
+  }'
+```
 
-### Authentication
-- Uses Auth0 for user authentication
-- Credentials stored in AWS Secrets Manager
-- Configuration served via `auth_config.py` Lambda function
+### Lambda Development
+- Lambda functions automatically packaged as ZIP files during terraform apply
+- Function code in `Terraform/lambda_functions/` gets deployed to AWS Lambda
+- All functions use Python 3.11 runtime with 30-second timeout
+- Environment variables configured via Terraform for database and secret access
 
-### Data Storage
-- DynamoDB with composite keys (PK/SK pattern)
-- GSI for date-based queries
-- Schema supports user isolation and time entry tracking
+### Frontend Development
+- Static files served via S3 + CloudFront
+- No build process required - direct HTML/CSS/JS
+- Frontend calls API at api.vibesheets.com for backend integration
+- **JavaScript Functions Required**: HTML files call functions like `handleGoogleLogin()`, `handleAuth0Login()`, `clockIn()`, `clockOut()`, `exportPDF()`, etc.
+- **Frontend Deployment**: Changes to Frontend/ directory require S3 sync and CloudFront invalidation via Terraform or CI/CD
 
-### API Structure
-- RESTful API via AWS API Gateway
-- CORS enabled for cross-origin requests
-- Lambda proxy integration
+## API Endpoints
+- `GET /auth` - Retrieve Auth0/Google configuration
+- `POST /clock` - Clock in/out operations (requires JWT token)
+- `GET /status` - Get current clock status (requires JWT token)
+- `GET /timesheets` - Retrieve timesheet data (requires JWT token)
+- `PUT /timesheets` - Update timesheet entries (requires JWT token) 
+- `POST /export` - Export timesheets to CSV (requires JWT token)
 
-## Environment Variables (Lambda)
-- `DYNAMODB_TABLE` - DynamoDB table name for timesheet data
-- `ALLOWED_ORIGINS` - Comma-separated list of allowed CORS origins
-- `AWS_REGION` - AWS region (defaults to us-east-1)
+## Database Schema
+- **time_entries**: `user_id` (hash), `timestamp` (range), `date`, `type`, `hours`
+- **user_sessions**: `user_id` (hash), `status`, `clock_in_time`, `last_updated`
+- **user_settings**: `user_id` (hash), user preference data
 
-## Important Notes
-- No package.json or traditional dependency management
-- Frontend uses vanilla JavaScript (no build tools)
-- All AWS resources managed through Terraform
-- Production deployment requires manual S3 sync for frontend files
-- Secrets must be manually configured in AWS Secrets Manager before deployment
+## Key Features
+- User authentication via Auth0 (email/password and Google OAuth)
+- Clock in/out functionality with automatic hour calculation
+- Monthly hours tracking with date-based queries
+- Time entry editing and management
+- CSV export of timesheets
+- Period-based filtering (daily, weekly, monthly, custom ranges)
+- Session state management for clock status tracking
+
+## Security Configuration
+- JWT tokens validated in Lambda functions (simplified verification)
+- Secrets stored in AWS Secrets Manager
+- CORS configured for cross-origin requests
+- IAM roles limit Lambda permissions to required resources only
+
+## Deployment Notes
+- Frontend deployed to S3 with CloudFront distribution
+- Backend functions deployed as Lambda functions
+- Infrastructure managed entirely through Terraform
+- Domain already configured: vibesheets.com
+- SSL certificates auto-renewed via ACM
+
+## Current Issues
+- **Missing JavaScript Implementation**: The Frontend/assets/js/ directory is empty but HTML files reference JavaScript functions
+- **Required JS Functions**: Authentication handlers, clock in/out functionality, timesheet management, and export features
+- **Git Status**: Several files have been deleted (see git status) - may need restoration or cleanup
