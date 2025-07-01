@@ -7,14 +7,20 @@ import io
 from datetime import datetime
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
+from auth_utils import get_cors_headers, handle_cors_preflight, get_user_from_token
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
 
 def lambda_handler(event, context):
-    headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS'
-    }
+    headers = get_cors_headers()
+    
+    # Handle preflight OPTIONS request
+    cors_response = handle_cors_preflight(event)
+    if cors_response:
+        return cors_response
 
     try:
         # Parse request body
@@ -67,13 +73,22 @@ def lambda_handler(event, context):
             # Convert to sorted list
             sorted_entries = sorted(daily_entries.values(), key=lambda x: x['date'])
 
-            if export_format == 'csv':
-                # Generate CSV
-                output = io.StringIO()
-                writer = csv.writer(output)
+            if export_format == 'pdf' or export_format == 'csv':
+                # Generate PDF
+                buffer = io.BytesIO()
+                doc = SimpleDocTemplate(buffer, pagesize=letter)
+                styles = getSampleStyleSheet()
                 
-                # Write headers
-                writer.writerow(['Date', 'Clock In', 'Clock Out', 'Total Hours', 'Project', 'Description'])
+                # Build the PDF content
+                elements = []
+                
+                # Title
+                title = Paragraph(f"Timesheet Report: {start_date} to {end_date}", styles['Title'])
+                elements.append(title)
+                elements.append(Spacer(1, 12))
+                
+                # Table data
+                data = [['Date', 'Clock In', 'Clock Out', 'Total Hours']]
                 
                 total_hours = 0
                 for entry in sorted_entries:
@@ -82,38 +97,58 @@ def lambda_handler(event, context):
                     
                     if entry['clockInTime']:
                         clock_in_time = datetime.fromisoformat(entry['clockInTime'].replace('Z', '+00:00'))
-                        clock_in_formatted = clock_in_time.strftime('%H:%M:%S')
+                        clock_in_formatted = clock_in_time.strftime('%I:%M %p')
                     
                     if entry['clockOutTime']:
                         clock_out_time = datetime.fromisoformat(entry['clockOutTime'].replace('Z', '+00:00'))
-                        clock_out_formatted = clock_out_time.strftime('%H:%M:%S')
+                        clock_out_formatted = clock_out_time.strftime('%I:%M %p')
                     
                     total_hours += entry['totalHours']
                     
-                    writer.writerow([
+                    data.append([
                         entry['date'],
                         clock_in_formatted,
                         clock_out_formatted,
-                        f"{entry['totalHours']:.2f}",
-                        entry['project'],
-                        entry['description']
+                        f"{entry['totalHours']:.2f}h"
                     ])
                 
                 # Add total row
-                writer.writerow(['', '', '', '', '', ''])
-                writer.writerow(['Total Hours:', '', '', f"{total_hours:.2f}", '', ''])
+                data.append(['', '', 'Total:', f"{total_hours:.2f}h"])
                 
-                csv_content = output.getvalue()
-                output.close()
+                # Create table
+                table = Table(data)
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 14),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
+                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                
+                elements.append(table)
+                
+                # Build PDF
+                doc.build(elements)
+                
+                pdf_content = buffer.getvalue()
+                buffer.close()
+                
+                # Encode as base64 for API Gateway
+                pdf_b64 = base64.b64encode(pdf_content).decode('utf-8')
 
                 return {
                     'statusCode': 200,
                     'headers': {
                         **headers,
-                        'Content-Type': 'text/csv',
-                        'Content-Disposition': f'attachment; filename="timesheet_{start_date}_to_{end_date}.csv"'
+                        'Content-Type': 'application/pdf',
+                        'Content-Disposition': f'attachment; filename="timesheet_{start_date}_to_{end_date}.pdf"'
                     },
-                    'body': csv_content
+                    'body': pdf_b64,
+                    'isBase64Encoded': True
                 }
             else:
                 # Return JSON format
