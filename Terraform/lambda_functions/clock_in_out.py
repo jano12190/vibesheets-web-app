@@ -1,65 +1,28 @@
 import json
 import os
 import boto3
-import base64
 from datetime import datetime
 from decimal import Decimal
 from botocore.exceptions import ClientError
+from auth_utils import get_cors_headers, handle_cors_preflight, get_user_from_token
 
 def lambda_handler(event, context):
-    headers = {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-        'Access-Control-Allow-Methods': 'POST,OPTIONS'
-    }
+    headers = get_cors_headers()
+    
+    # Handle preflight OPTIONS request
+    cors_response = handle_cors_preflight(event)
+    if cors_response:
+        return cors_response
 
     try:
         # Parse request body
         body = json.loads(event['body'])
         action = body.get('action')  # 'in' or 'out'
         
-        # Get token from Authorization header
-        token = None
-        if event.get('headers'):
-            auth_header = event['headers'].get('Authorization')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.replace('Bearer ', '')
-        
-        if not token:
-            return {
-                'statusCode': 401,
-                'headers': headers,
-                'body': json.dumps({'error': 'Missing token'})
-            }
-
-        # Simple JWT parsing without verification (temporary)
-        try:
-            # Split JWT token and decode payload
-            parts = token.split('.')
-            if len(parts) != 3:
-                raise ValueError("Invalid token format")
-            
-            # Decode payload (add padding if needed)
-            payload = parts[1]
-            payload += '=' * (4 - len(payload) % 4)  # Add padding
-            decoded_bytes = base64.urlsafe_b64decode(payload)
-            decoded = json.loads(decoded_bytes.decode('utf-8'))
-            
-            user_id = decoded.get('sub')
-            if not user_id:
-                return {
-                    'statusCode': 401,
-                    'headers': headers,
-                    'body': json.dumps({'error': 'Invalid token'})
-                }
-        except Exception as e:
-            print(f"Token decode error: {e}")
-            return {
-                'statusCode': 401,
-                'headers': headers,
-                'body': json.dumps({'error': 'Invalid token'})
-            }
+        # Get and validate user from token
+        user_id, auth_error = get_user_from_token(event)
+        if auth_error:
+            return auth_error
 
         dynamodb = boto3.resource('dynamodb')
         time_entries_table = dynamodb.Table(os.environ['TIME_ENTRIES_TABLE'])
@@ -179,3 +142,4 @@ def lambda_handler(event, context):
             'headers': headers,
             'body': json.dumps({'error': 'Internal server error'})
         }
+
