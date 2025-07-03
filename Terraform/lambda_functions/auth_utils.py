@@ -39,13 +39,15 @@ def validate_auth0_token(token):
     try:
         secrets = get_auth_secrets()
         if not secrets:
-            raise ValueError("Unable to get auth secrets")
+            print("Unable to get auth secrets")
+            return None
             
         auth0_domain = secrets['auth0_domain']
         jwks = get_jwks_keys()
         
         if not jwks:
-            raise ValueError("Unable to get JWKS keys")
+            print("Unable to get JWKS keys")
+            return None
         
         # Decode the token header to get the key ID
         unverified_header = jwt.get_unverified_header(token)
@@ -59,9 +61,10 @@ def validate_auth0_token(token):
                 break
         
         if not key:
-            raise ValueError("Unable to find appropriate key")
+            print(f"Unable to find appropriate key for kid: {kid}")
+            return None
         
-        # Verify and decode the token
+        # Verify and decode the token with proper audience validation
         payload = jwt.decode(
             token,
             key,
@@ -72,23 +75,15 @@ def validate_auth0_token(token):
         
         return payload.get('sub')
         
+    except jwt.ExpiredSignatureError:
+        print("Token has expired")
+        return None
+    except jwt.InvalidTokenError as e:
+        print(f"Invalid token: {e}")
+        return None
     except Exception as e:
         print(f"Token validation error: {e}")
-        # Fallback to simple decode for development
-        try:
-            import base64
-            parts = token.split('.')
-            if len(parts) != 3:
-                return None
-            
-            payload = parts[1]
-            payload += '=' * (4 - len(payload) % 4)
-            decoded_bytes = base64.urlsafe_b64decode(payload)
-            decoded = json.loads(decoded_bytes.decode('utf-8'))
-            
-            return decoded.get('sub')
-        except:
-            return None
+        return None
 
 def get_cors_headers():
     """Standard CORS headers for all Lambda functions"""

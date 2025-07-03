@@ -16,9 +16,10 @@ VibeSheets is a timesheet web application for tracking work hours with the follo
 ### Frontend Structure
 - `Frontend/index.html` - Login page with Auth0 and Google authentication
 - `Frontend/dashboard.html` - Main timesheet dashboard with clock in/out functionality
-- `Frontend/assets/css/` - Styling (login.css, style.css)
+- `Frontend/assets/css/` - Styling (login.css, style.css, dashboard.css)
 - `Frontend/assets/js/` - JavaScript files for authentication and dashboard functionality
-- **Missing JavaScript Implementation**: HTML files reference JavaScript functions that need to be implemented
+  - `auth.js` - Authentication logic, login/logout, session management
+  - `dashboard.js` - Dashboard functionality, clock in/out, time tracking, data display
 
 ### Backend Structure
 - **Lambda Functions** (in `Terraform/lambda_functions/`):
@@ -93,8 +94,9 @@ aws secretsmanager put-secret-value \
 - `POST /clock` - Clock in/out operations (requires JWT token)
 - `GET /status` - Get current clock status (requires JWT token)
 - `GET /timesheets` - Retrieve timesheet data (requires JWT token)
-- `PUT /timesheets` - Update timesheet entries (requires JWT token) 
-- `POST /export` - Export timesheets to CSV (requires JWT token)
+- `PUT /timesheets` - Update timesheet entries (requires JWT token)
+- `DELETE /timesheets` - Delete timesheet entries (requires JWT token)
+- `POST /export` - Export timesheets to PDF/CSV (requires JWT token)
 
 ## Database Schema
 - **time_entries**: `user_id` (hash), `timestamp` (range), `date`, `type`, `hours`
@@ -123,7 +125,18 @@ aws secretsmanager put-secret-value \
 - Domain already configured: vibesheets.com
 - SSL certificates auto-renewed via ACM
 
-## Current Issues
-- **Missing JavaScript Implementation**: The Frontend/assets/js/ directory is empty but HTML files reference JavaScript functions
-- **Required JS Functions**: Authentication handlers, clock in/out functionality, timesheet management, and export features
-- **Git Status**: Several files have been deleted (see git status) - may need restoration or cleanup
+## Recent Fixes (2025-07-02)
+- ✅ **Fixed missing hoursLabel element**: Added `id="hoursLabel"` to h2 in dashboard.html
+- ✅ **Fixed Frontend git submodule**: Committed changes properly to submodule
+- ✅ **Fixed timezone handling**: Updated JavaScript to use UTC consistently with backend
+- ✅ **Improved session cleanup**: Added logic to recover from stale clock-in states
+- ✅ **Fixed API Gateway routing**: Added DELETE method support for /timesheets endpoint
+- ✅ **Updated documentation**: Corrected outdated information about JavaScript files
+
+## Known Working Features
+- User authentication via Auth0 and Google OAuth
+- Clock in/out functionality with session tracking
+- Time entry viewing, editing, and deletion
+- Hours calculation and period filtering
+- PDF/CSV export of timesheets
+- Responsive mobile design

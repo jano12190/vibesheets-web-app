@@ -145,7 +145,7 @@ resource "aws_lambda_function" "update_timesheet" {
   filename         = "update_timesheet.zip"
   function_name    = "${var.project_name}-update-timesheet-${var.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
+  handler         = "update_timesheet.lambda_handler"
   runtime         = "python3.11"
   timeout         = 30
 
@@ -164,9 +164,9 @@ resource "aws_lambda_function" "export_timesheet" {
   filename         = "export_timesheet.zip"
   function_name    = "${var.project_name}-export-timesheet-${var.environment}"
   role            = aws_iam_role.lambda_role.arn
-  handler         = "lambda_function.lambda_handler"
+  handler         = "export_timesheet.lambda_handler"
   runtime         = "python3.11"
-  timeout         = 30
+  timeout         = 60
 
   environment {
     variables = {
@@ -191,44 +191,29 @@ data "archive_file" "auth_config_zip" {
 data "archive_file" "clock_in_out_zip" {
   type        = "zip"
   output_path = "clock_in_out.zip"
-  source {
-    content  = file("${path.module}/lambda_functions/clock_in_out.py")
-    filename = "lambda_function.py"
-  }
+  source_dir  = "${path.module}/lambda_packages/clock_in_out"
 }
 
 data "archive_file" "clock_status_zip" {
   type        = "zip"
   output_path = "clock_status.zip"
-  source {
-    content  = file("${path.module}/lambda_functions/clock_status.py")
-    filename = "lambda_function.py"
-  }
+  source_dir  = "${path.module}/lambda_packages/clock_status"
 }
 
 data "archive_file" "get_timesheets_zip" {
   type        = "zip"
   output_path = "get_timesheets.zip"
-  source {
-    content  = file("${path.module}/lambda_functions/get_timesheets.py")
-    filename = "lambda_function.py"
-  }
+  source_dir  = "${path.module}/lambda_packages/get_timesheets"
 }
 
 data "archive_file" "update_timesheet_zip" {
   type        = "zip"
   output_path = "update_timesheet.zip"
-  source {
-    content  = file("${path.module}/lambda_functions/update_timesheet.py")
-    filename = "lambda_function.py"
-  }
+  source_file = "${path.module}/lambda_functions/update_timesheet.py"
 }
 
 data "archive_file" "export_timesheet_zip" {
   type        = "zip"
   output_path = "export_timesheet.zip"
-  source {
-    content  = file("${path.module}/lambda_functions/export_timesheet.py")
-    filename = "lambda_function.py"
-  }
+  source_file = "${path.module}/lambda_functions/export_timesheet.py"
 }

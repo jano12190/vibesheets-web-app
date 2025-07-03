@@ -134,7 +134,7 @@ resource "aws_s3_object" "frontend_html" {
 }
 
 resource "aws_s3_object" "frontend_css" {
-  for_each = fileset("${path.module}/../Frontend", "**/*.css")
+  for_each = fileset("${path.module}/../Frontend", "{css,assets}/*.css")
   
   bucket       = aws_s3_bucket.frontend.bucket
   key          = each.value
@@ -144,7 +144,7 @@ resource "aws_s3_object" "frontend_css" {
 }
 
 resource "aws_s3_object" "frontend_js" {
-  for_each = fileset("${path.module}/../Frontend", "**/*.js")
+  for_each = fileset("${path.module}/../Frontend", "{js,assets}/*.js")
   
   bucket       = aws_s3_bucket.frontend.bucket
   key          = each.value
@@ -153,8 +153,24 @@ resource "aws_s3_object" "frontend_js" {
   etag         = filemd5("${path.module}/../Frontend/${each.value}")
 }
 
-resource "aws_s3_object" "frontend_images" {
-  for_each = fileset("${path.module}/../Frontend", "**/*.{png,jpg,jpeg,gif,svg}")
+resource "aws_s3_object" "frontend_images_root" {
+  for_each = fileset("${path.module}/../Frontend", "*.{png,jpg,jpeg,gif,svg}")
+  
+  bucket       = aws_s3_bucket.frontend.bucket
+  key          = each.value
+  source       = "${path.module}/../Frontend/${each.value}"
+  content_type = lookup({
+    "png"  = "image/png"
+    "jpg"  = "image/jpeg"
+    "jpeg" = "image/jpeg"
+    "gif"  = "image/gif"
+    "svg"  = "image/svg+xml"
+  }, split(".", each.value)[length(split(".", each.value)) - 1], "application/octet-stream")
+  etag         = filemd5("${path.module}/../Frontend/${each.value}")
+}
+
+resource "aws_s3_object" "frontend_images_assets" {
+  for_each = fileset("${path.module}/../Frontend", "assets/*.{png,jpg,jpeg,gif,svg}")
   
   bucket       = aws_s3_bucket.frontend.bucket
   key          = each.value

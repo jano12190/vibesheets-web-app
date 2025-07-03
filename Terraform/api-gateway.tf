@@ -30,12 +30,16 @@ resource "aws_api_gateway_deployment" "api" {
       aws_api_gateway_method.timesheets_options.id,
       aws_api_gateway_method.timesheets_get.id,
       aws_api_gateway_method.timesheets_put.id,
+      aws_api_gateway_method.timesheets_delete.id,
       aws_api_gateway_integration.timesheets_get.id,
       aws_api_gateway_integration.timesheets_put.id,
+      aws_api_gateway_integration.timesheets_delete.id,
       aws_api_gateway_resource.export.id,
       aws_api_gateway_method.export_options.id,
       aws_api_gateway_method.export_post.id,
       aws_api_gateway_integration.export_post.id,
+      # Force redeployment timestamp
+      timestamp(),
     ]))
   }
 
@@ -121,7 +125,7 @@ resource "aws_api_gateway_gateway_response" "cors" {
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
     "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'"
+    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
   }
 }
 
@@ -399,7 +403,7 @@ resource "aws_api_gateway_integration_response" "timesheets_options" {
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-    "method.response.header.Access-Control-Allow-Methods" = "'GET,PUT,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 }
@@ -440,6 +444,23 @@ resource "aws_api_gateway_integration" "timesheets_put" {
   rest_api_id = aws_api_gateway_rest_api.api.id
   resource_id = aws_api_gateway_resource.timesheets.id
   http_method = aws_api_gateway_method.timesheets_put.http_method
+
+  integration_http_method = "POST"
+  type                   = "AWS_PROXY"
+  uri                    = aws_lambda_function.update_timesheet.invoke_arn
+}
+
+resource "aws_api_gateway_method" "timesheets_delete" {
+  rest_api_id   = aws_api_gateway_rest_api.api.id
+  resource_id   = aws_api_gateway_resource.timesheets.id
+  http_method   = "DELETE"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "timesheets_delete" {
+  rest_api_id = aws_api_gateway_rest_api.api.id
+  resource_id = aws_api_gateway_resource.timesheets.id
+  http_method = aws_api_gateway_method.timesheets_delete.http_method
 
   integration_http_method = "POST"
   type                   = "AWS_PROXY"

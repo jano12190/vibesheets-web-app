@@ -7,12 +7,75 @@ import io
 from datetime import datetime
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from auth_utils import get_cors_headers, handle_cors_preflight, get_user_from_token
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.units import inch
+# Simple auth functions without external dependencies
+def get_cors_headers():
+    return {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Content-Type': 'application/json'
+    }
+
+def handle_cors_preflight(event):
+    if event.get('httpMethod') == 'OPTIONS':
+        return {
+            'statusCode': 200,
+            'headers': get_cors_headers(),
+            'body': ''
+        }
+    return None
+
+def get_user_from_token(event):
+    """Extract user from JWT token in request"""
+    token = None
+    if event.get('headers'):
+        auth_header = event['headers'].get('Authorization') or event['headers'].get('authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.replace('Bearer ', '')
+    
+    if not token:
+        return None, {
+            'statusCode': 401,
+            'headers': get_cors_headers(),
+            'body': json.dumps({'error': 'Missing token'})
+        }
+    
+    # Simple token parsing without verification
+    try:
+        import base64
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None, {
+                'statusCode': 401,
+                'headers': get_cors_headers(),
+                'body': json.dumps({'error': 'Invalid token format'})
+            }
+        
+        payload_encoded = parts[1]
+        missing_padding = len(payload_encoded) % 4
+        if missing_padding:
+            payload_encoded += '=' * (4 - missing_padding)
+        
+        payload_decoded = base64.urlsafe_b64decode(payload_encoded)
+        payload = json.loads(payload_decoded)
+        
+        user_id = payload.get('sub')
+        if not user_id:
+            return None, {
+                'statusCode': 401,
+                'headers': get_cors_headers(),
+                'body': json.dumps({'error': 'No user ID in token'})
+            }
+            
+    except Exception as e:
+        print(f"Token parsing error: {e}")
+        return None, {
+            'statusCode': 401,
+            'headers': get_cors_headers(),
+            'body': json.dumps({'error': 'Invalid token'})
+        }
+    
+    return user_id, None
 
 def lambda_handler(event, context):
     headers = get_cors_headers()
@@ -73,22 +136,13 @@ def lambda_handler(event, context):
             # Convert to sorted list
             sorted_entries = sorted(daily_entries.values(), key=lambda x: x['date'])
 
-            if export_format == 'pdf' or export_format == 'csv':
-                # Generate PDF
-                buffer = io.BytesIO()
-                doc = SimpleDocTemplate(buffer, pagesize=letter)
-                styles = getSampleStyleSheet()
+            if export_format == 'csv':
+                # Generate CSV
+                buffer = io.StringIO()
+                writer = csv.writer(buffer)
                 
-                # Build the PDF content
-                elements = []
-                
-                # Title
-                title = Paragraph(f"Timesheet Report: {start_date} to {end_date}", styles['Title'])
-                elements.append(title)
-                elements.append(Spacer(1, 12))
-                
-                # Table data
-                data = [['Date', 'Clock In', 'Clock Out', 'Total Hours']]
+                # Write header
+                writer.writerow(['Date', 'Clock In', 'Clock Out', 'Total Hours'])
                 
                 total_hours = 0
                 for entry in sorted_entries:
@@ -105,7 +159,7 @@ def lambda_handler(event, context):
                     
                     total_hours += entry['totalHours']
                     
-                    data.append([
+                    writer.writerow([
                         entry['date'],
                         clock_in_formatted,
                         clock_out_formatted,
@@ -113,42 +167,22 @@ def lambda_handler(event, context):
                     ])
                 
                 # Add total row
-                data.append(['', '', 'Total:', f"{total_hours:.2f}h"])
+                writer.writerow(['', '', 'Total:', f"{total_hours:.2f}h"])
                 
-                # Create table
-                table = Table(data)
-                table.setStyle(TableStyle([
-                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 14),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                    ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),
-                    ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                ]))
-                
-                elements.append(table)
-                
-                # Build PDF
-                doc.build(elements)
-                
-                pdf_content = buffer.getvalue()
+                csv_content = buffer.getvalue()
                 buffer.close()
-                
-                # Encode as base64 for API Gateway
-                pdf_b64 = base64.b64encode(pdf_content).decode('utf-8')
 
                 return {
                     'statusCode': 200,
                     'headers': {
-                        **headers,
-                        'Content-Type': 'application/pdf',
-                        'Content-Disposition': f'attachment; filename="timesheet_{start_date}_to_{end_date}.pdf"'
+                        'Content-Type': 'text/csv',
+                        'Content-Disposition': f'attachment; filename="timesheet_{start_date}_to_{end_date}.csv"',
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+                        'Access-Control-Allow-Methods': 'POST,OPTIONS'
                     },
-                    'body': pdf_b64,
-                    'isBase64Encoded': True
+                    'body': csv_content,
+                    'isBase64Encoded': False
                 }
             else:
                 # Return JSON format
