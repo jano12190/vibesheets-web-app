@@ -58,7 +58,20 @@
       "Bash(aws logs tail:*)",
       "Bash(python -m zipfile:*)",
       "Bash(pip install:*)",
-      "Bash(pip3 install:*)"
+      "Bash(pip3 install:*)",
+      "Bash(git restore:*)",
+      "Bash(python:*)",
+      "Bash(NODE_ENV=production node production-server.js)",
+      "Bash(ss:*)",
+      "Bash(npm start)",
+      "Bash(wget:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker compose:*)",
+      "Bash(aws s3 sync:*)",
+      "Bash(aws s3 cp:*)",
+      "Bash(unzip:*)",
+      "Bash(aws dynamodb scan:*)",
+      "Bash(convert:*)"
     ],
     "deny": []
   }
