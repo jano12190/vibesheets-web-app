@@ -39,5 +39,34 @@ temp/
 dist/
 build/
 
-# Backend files (now in separate repo)
-Backend/
+# Terraform temporary files (large provider binaries)
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Terraform ZIP files (build artifacts)
+*.zip
+
+# React build outputs
+.parcel-cache/
+.cache/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Coverage directory
+coverage/
+
+# ESLint cache
+.eslintcache

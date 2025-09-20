@@ -71,7 +71,19 @@
       "Bash(aws s3 cp:*)",
       "Bash(unzip:*)",
       "Bash(aws dynamodb scan:*)",
-      "Bash(convert:*)"
+      "Bash(convert:*)",
+      "Bash(git pull:*)",
+      "Bash(sed:*)",
+      "Bash(npx vite:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx typescript:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "Bash(npm audit:*)",
+      "Bash(for dir in create_project get_projects update_project delete_project)",
+      "Bash(do cp:*)",
+      "Bash(done)",
+      "Bash(true)"
     ],
     "deny": []
   }

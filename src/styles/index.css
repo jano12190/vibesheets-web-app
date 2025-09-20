@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap');
+
+/* CSS Variables */
+:root {
+  --primary: #43cea2;
+  --primary-dark: #185a9d;
+  --primary-light: #60e6c2;
+  --accent: #f093fb;
+  --glass: rgba(255, 255, 255, 0.2);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.2);
+  --radius: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --glow-primary: 0 0 20px rgba(67, 206, 162, 0.3);
+  --glow-accent: 0 0 20px rgba(240, 147, 251, 0.3);
+}
+
+/* Base Styles */
+body {
+  background: linear-gradient(135deg, #43cea2, #185a9d);
+  font-family: 'Inter', 'Poppins', 'Segoe UI', Arial, sans-serif;
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  min-height: 100vh;
+  color: #fff;
+  overflow-x: hidden;
+  margin: 0;
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(240, 147, 251, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(67, 206, 162, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Glass Morphism Components */
+@layer components {
+  .glass-card {
+    @apply bg-white/20 backdrop-blur-[20px] border-2 border-white/25 rounded-xl shadow-xl;
+  }
+  
+  .glass-modal {
+    @apply bg-white/15 backdrop-blur-[25px] border border-white/30 rounded-2xl;
+  }
+  
+  .glass-input {
+    @apply bg-white/20 border border-white/40 rounded-lg text-white placeholder-white/60 backdrop-blur-[15px];
+    @apply focus:outline-none focus:border-primary-light focus:bg-white/30;
+    @apply focus:shadow-[0_0_0_3px_rgba(67,206,162,0.3)];
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-br from-primary to-primary-light text-white border border-white/20;
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-300;
+    @apply hover:shadow-[var(--glow-primary)] hover:-translate-y-1;
+    @apply active:translate-y-0 shadow-lg;
+  }
+  
+  .btn-secondary {
+    @apply bg-white/8 backdrop-blur-[15px] text-white border border-white/30;
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-300;
+    @apply hover:bg-white/15 hover:-translate-y-1 hover:shadow-lg;
+  }
+  
+  .status-active {
+    @apply bg-emerald-500/20 text-emerald-200 border-emerald-400/30;
+  }
+  
+  .status-paused {
+    @apply bg-amber-500/20 text-amber-200 border-amber-400/30;
+  }
+  
+  .status-completed {
+    @apply bg-blue-500/20 text-blue-200 border-blue-400/30;
+  }
+  
+  .status-archived {
+    @apply bg-gray-500/20 text-gray-200 border-gray-400/30;
+  }
+}
