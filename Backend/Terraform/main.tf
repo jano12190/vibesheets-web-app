@@ -19,7 +19,4 @@ provider "aws" {
 # Data source for AWS caller identity
 data "aws_caller_identity" "current" {}
 
-# Data source for availability zones
-data "aws_availability_zones" "available" {
-  state = "available"
-}
+# Note: Removed availability zones data source since we're using serverless architecture only
