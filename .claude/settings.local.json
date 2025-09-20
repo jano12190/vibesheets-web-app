@@ -83,7 +83,11 @@
       "Bash(for dir in create_project get_projects update_project delete_project)",
       "Bash(do cp:*)",
       "Bash(done)",
-      "Bash(true)"
+      "Bash(true)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git init:*)"
     ],
     "deny": []
   }
