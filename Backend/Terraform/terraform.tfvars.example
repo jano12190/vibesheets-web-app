@@ -1,0 +1,26 @@
+# Copy this file to terraform.tfvars and fill in your values
+
+# AWS Configuration
+aws_region = "us-east-1"
+
+# Domain Configuration
+domain_name = "vibesheets.com"
+
+# Environment
+environment = "prod"
+
+# Project Name
+project_name = "vibesheets"
+
+# Note: Auth0 and Google OAuth secrets are stored securely in AWS Secrets Manager
+# After deployment, set the secrets using AWS CLI:
+#
+# aws secretsmanager put-secret-value \
+#   --secret-id vibesheets-auth-config-prod \
+#   --secret-string '{
+#     "auth0_domain": "your-domain.auth0.com",
+#     "auth0_client_id": "your-client-id", 
+#     "auth0_client_secret": "your-client-secret",
+#     "google_client_id": "your-google-client-id",
+#     "google_client_secret": "your-google-client-secret"
+#   }'

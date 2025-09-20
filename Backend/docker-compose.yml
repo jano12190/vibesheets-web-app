@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  vibesheets:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: vibesheets-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - TZ=UTC
+    volumes:
+      - ./logs:/app/logs:rw
+    networks:
+      - vibesheets-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/logs
+
+  # Nginx reverse proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: vibesheets-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - vibesheets
+    networks:
+      - vibesheets-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: '0.25'
+
+  # Log aggregation (optional)
+  logrotate:
+    image: alpine:latest
+    container_name: vibesheets-logrotate
+    restart: "no"
+    volumes:
+      - ./logs:/logs:rw
+    command: |
+      sh -c '
+        echo "Setting up log rotation..."
+        find /logs -name "*.log" -size +100M -exec gzip {} \;
+        find /logs -name "*.gz" -mtime +7 -delete
+        echo "Log rotation complete"
+      '
+    networks:
+      - vibesheets-network
+
+networks:
+  vibesheets-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  logs:
+    driver: local
