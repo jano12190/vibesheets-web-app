@@ -41,7 +41,6 @@ locals {
 
 # Certificate validation records (only if creating new certificate)
 resource "aws_route53_record" "ssl_certificate_validation" {
-  count = var.existing_acm_certificate_arn == "" ? 1 : 0
   for_each = var.existing_acm_certificate_arn == "" ? {
     for dvo in aws_acm_certificate.ssl_certificate[0].domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
@@ -98,15 +97,4 @@ resource "aws_route53_record" "www" {
   }
 }
 
-# API subdomain for API Gateway
-resource "aws_route53_record" "api" {
-  zone_id = local.zone_id
-  name    = "api.${var.domain_name}"
-  type    = "A"
-
-  alias {
-    name                   = aws_api_gateway_domain_name.api.regional_domain_name
-    zone_id                = aws_api_gateway_domain_name.api.regional_zone_id
-    evaluate_target_health = false
-  }
-}
+# API subdomain route is defined in api-gateway.tf - removed duplicate

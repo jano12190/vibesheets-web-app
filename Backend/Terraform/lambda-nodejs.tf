@@ -31,22 +31,7 @@ resource "aws_iam_role_policy" "lambda_nodejs_policy" {
   })
 }
 
-# MongoDB configuration secret
-resource "aws_secretsmanager_secret" "mongodb_config" {
-  name        = "${var.project_name}-mongodb-config-${var.environment}"
-  description = "MongoDB connection configuration for VibeSheets"
-}
-
-# Secret values are managed manually in existing Secrets Manager secrets
-# No need to create secret versions here - using existing secrets
-
-# Auth0/OAuth configuration secret
-resource "aws_secretsmanager_secret" "auth_config" {
-  name        = "${var.project_name}-auth-config-${var.environment}"
-  description = "Auth0 and OAuth configuration for VibeSheets"
-}
-
-# Auth secret values are managed manually in existing Secrets Manager secrets
+# Secrets are managed in secrets.tf file - removed duplicates here
 
 # Build script for Node.js Lambda packages
 resource "null_resource" "build_nodejs_lambdas" {
