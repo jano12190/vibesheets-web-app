@@ -1,101 +1,177 @@
-import type { Project, ProjectFormData } from '@/types';
+import { authService } from './auth';
 
-const API_BASE_URL = 'https://api.vibesheets.com/prod';
-
-class APIError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'APIError';
-  }
+export interface ClockResponse {
+  success: boolean;
+  message: string;
+  timestamp: string;
+  hours?: number;
 }
 
-async function apiRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const defaultOptions: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-  };
+export interface ClockStatus {
+  userId: string;
+  status: 'in' | 'out';
+  isClockedIn: boolean;
+  lastUpdated: string | null;
+  clockInTime: string | null;
+  currentSessionHours?: number;
+}
 
-  // Add auth token if available (for when we implement auth)
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    defaultOptions.headers = {
-      ...defaultOptions.headers,
-      'Authorization': `Bearer ${token}`,
+export interface TimeEntry {
+  user_id: string;
+  timestamp: string;
+  date: string;
+  type: 'clock_in' | 'clock_out';
+  hours: number;
+  clock_in_time?: string;
+}
+
+export interface TimesheetData {
+  timesheets: Array<{
+    date: string;
+    entries: TimeEntry[];
+    totalHours: number;
+  }>;
+  entries: TimeEntry[];
+  totalHours: number;
+  period: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+class ApiService {
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.vibesheets.com';
+
+  private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
+    try {
+      const token = await authService.getAccessToken();
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          ...options?.headers,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'API request failed');
+      }
+
+      return data.data || data;
+    } catch (error) {
+      console.error('API request error:', error);
+      throw error;
+    }
+  }
+
+  async clockIn(): Promise<ClockResponse> {
+    const response = await this.request<any>('/clock', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'clock_in' })
+    });
+    
+    return {
+      success: response.success,
+      message: response.message,
+      timestamp: response.timestamp
     };
   }
 
-  const response = await fetch(url, { ...defaultOptions, ...options });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-    throw new APIError(response.status, errorData.error || 'Request failed');
+  async clockOut(): Promise<ClockResponse> {
+    const response = await this.request<any>('/clock', {
+      method: 'POST',
+      body: JSON.stringify({ action: 'clock_out' })
+    });
+    
+    return {
+      success: response.success,
+      message: response.message,
+      timestamp: response.timestamp,
+      hours: response.hours
+    };
   }
 
-  return response.json();
+  async getClockStatus(): Promise<ClockStatus> {
+    const response = await this.request<any>('/status');
+    return response;
+  }
+
+  async getTimesheets(params?: {
+    period?: 'today' | 'this-week' | 'this-month';
+    startDate?: string;
+    endDate?: string;
+  }): Promise<TimesheetData> {
+    const queryParams = new URLSearchParams();
+    
+    if (params?.period) {
+      queryParams.append('period', params.period);
+    }
+    if (params?.startDate) {
+      queryParams.append('startDate', params.startDate);
+    }
+    if (params?.endDate) {
+      queryParams.append('endDate', params.endDate);
+    }
+
+    const endpoint = `/timesheets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const response = await this.request<any>(endpoint);
+    return response;
+  }
+
+  async updateTimesheet(entry: Partial<TimeEntry> & { timestamp: string }): Promise<{ success: boolean }> {
+    const response = await this.request<any>('/timesheets', {
+      method: 'PUT',
+      body: JSON.stringify(entry)
+    });
+    
+    return { success: response.success };
+  }
+
+  async deleteTimesheet(timestamp: string): Promise<{ success: boolean }> {
+    const response = await this.request<any>('/timesheets', {
+      method: 'DELETE',
+      body: JSON.stringify({ timestamp })
+    });
+    
+    return { success: response.success };
+  }
+
+  async exportTimesheet(params: {
+    format: 'csv' | 'json';
+    period?: 'today' | 'this-week' | 'this-month';
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{ content: string; filename: string }> {
+    const response = await this.request<any>('/export', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    });
+    
+    return {
+      content: response.content,
+      filename: response.filename
+    };
+  }
+
+  async getProjects(): Promise<{ id: string; name: string; client: string }[]> {
+    const response = await this.request<any>('/projects');
+    return response.projects || [];
+  }
+
+  async createProject(project: { name: string; client: string; hourlyRate?: number }): Promise<{ success: boolean }> {
+    const response = await this.request<any>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(project)
+    });
+    
+    return { success: response.success };
+  }
 }
 
-export const projectsAPI = {
-  // Get all projects for the authenticated user
-  async getProjects(status?: 'active' | 'archived'): Promise<{ projects: Project[]; count: number }> {
-    const queryParams = status ? `?status=${status}` : '';
-    return apiRequest(`/projects${queryParams}`);
-  },
-
-  // Create a new project
-  async createProject(projectData: ProjectFormData): Promise<{ message: string; project: Project }> {
-    return apiRequest('/projects', {
-      method: 'POST',
-      body: JSON.stringify({
-        name: projectData.projectName,
-        client: projectData.projectClient,
-        rate: projectData.projectRate,
-        rateType: 'hourly',
-        description: projectData.projectDescription,
-        clientEmail: projectData.clientEmail,
-        clientAddress: projectData.clientAddress,
-        invoiceTerms: projectData.invoiceTerms,
-        customDateRange: projectData.customDateRange,
-        invoiceNotes: projectData.invoiceNotes || 'Thank you for your business!',
-      }),
-    });
-  },
-
-  // Update an existing project
-  async updateProject(
-    projectId: string, 
-    updates: Partial<Project>
-  ): Promise<{ message: string; project: Project }> {
-    return apiRequest(`/projects/${projectId}`, {
-      method: 'PUT',
-      body: JSON.stringify(updates),
-    });
-  },
-
-  // Delete a project
-  async deleteProject(projectId: string): Promise<{ message: string; projectId: string }> {
-    return apiRequest(`/projects/${projectId}`, {
-      method: 'DELETE',
-    });
-  },
-};
-
-export const authAPI = {
-  // Get Auth0 configuration
-  async getAuthConfig(): Promise<{
-    domain: string;
-    clientId: string;
-    audience: string;
-    scope: string;
-  }> {
-    return apiRequest('/auth');
-  },
-};
-
-export { APIError };
+export const apiService = new ApiService();

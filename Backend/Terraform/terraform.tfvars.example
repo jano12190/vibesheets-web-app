@@ -1,4 +1,5 @@
-# Copy this file to terraform.tfvars and fill in your values
+# VibeSheets Terraform Configuration
+# Copy this file to terraform.tfvars and update with your values
 
 # AWS Configuration
 aws_region = "us-east-1"
@@ -8,19 +9,36 @@ domain_name = "vibesheets.com"
 
 # Environment
 environment = "prod"
-
-# Project Name
 project_name = "vibesheets"
 
-# Note: Auth0 and Google OAuth secrets are stored securely in AWS Secrets Manager
-# After deployment, set the secrets using AWS CLI:
-#
-# aws secretsmanager put-secret-value \
-#   --secret-id vibesheets-auth-config-prod \
-#   --secret-string '{
-#     "auth0_domain": "your-domain.auth0.com",
-#     "auth0_client_id": "your-client-id", 
-#     "auth0_client_secret": "your-client-secret",
-#     "google_client_id": "your-google-client-id",
-#     "google_client_secret": "your-google-client-secret"
-#   }'
+# Auth0 Configuration
+# Get these from your Auth0 Application settings
+auth0_domain = "your-domain.auth0.com"
+auth0_client_id = "your-auth0-client-id"
+auth0_audience = "https://api.vibesheets.com"
+
+# Google OAuth Configuration
+# Get this from Google Cloud Console
+google_client_id = "your-google-client-id"
+
+# MongoDB Configuration (connection string stored securely in Secrets Manager)
+mongodb_database = "vibesheets"
+
+# Security Configuration (Optional)
+# allowed_origins = "https://vibesheets.com,https://www.vibesheets.com"
+
+# Existing AWS Resources (if you want to use existing instead of creating new)
+# Leave empty to create new resources
+existing_route53_zone_id = "Z0163648WZSFKALV4Z2F"
+existing_acm_certificate_arn = "arn:aws:acm:us-east-1:654654511214:certificate/623b99e8-01cb-488e-95ce-a918b68a905d"
+existing_auth_secret_name = "vibesheets-auth-config-production"
+existing_mongodb_secret_name = "vibesheets-mongodb-config-prod"
+
+# Notes:
+# 1. Keep your terraform.tfvars file secure and never commit it to version control
+# 2. For production, use existing AWS resources by providing their IDs/ARNs above
+# 3. MongoDB URI should include authentication credentials
+# 4. Auth0 domain should NOT include https://
+# 5. Google Client ID is for OAuth integration
+# 6. allowed_origins restricts CORS to specific domains for security
+# 7. If using existing secrets, ensure they contain the required JSON structure

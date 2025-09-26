@@ -87,7 +87,12 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "Bash(git checkout:*)",
+      "Bash(git stash show:*)",
+      "Bash(npm ls:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": []
   }

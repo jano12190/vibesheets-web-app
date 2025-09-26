@@ -28,33 +28,23 @@ output "api_gateway_id" {
   value       = aws_api_gateway_rest_api.api.id
 }
 
-output "dynamodb_table_names" {
-  description = "DynamoDB table names"
-  value = {
-    time_entries   = aws_dynamodb_table.time_entries.name
-    user_settings  = aws_dynamodb_table.user_settings.name
-    user_sessions  = aws_dynamodb_table.user_sessions.name
-  }
-}
+# DynamoDB no longer used - MongoDB Atlas is the database
 
 output "lambda_function_names" {
   description = "Lambda function names"
   value = {
-    auth_config      = aws_lambda_function.auth_config.function_name
-    clock_in_out     = aws_lambda_function.clock_in_out.function_name
-    clock_status     = aws_lambda_function.clock_status.function_name
-    get_timesheets   = aws_lambda_function.get_timesheets.function_name
-    update_timesheet = aws_lambda_function.update_timesheet.function_name
-    export_timesheet = aws_lambda_function.export_timesheet.function_name
+    auth_config      = aws_lambda_function.auth_config_nodejs.function_name
+    clock_in_out     = aws_lambda_function.clock_in_out_nodejs.function_name
+    clock_status     = aws_lambda_function.clock_status_nodejs.function_name
+    get_timesheets   = aws_lambda_function.get_timesheets_nodejs.function_name
+    update_timesheet = aws_lambda_function.update_timesheet_nodejs.function_name
+    export_timesheet = aws_lambda_function.export_timesheet_nodejs.function_name
+    get_projects     = aws_lambda_function.get_projects_nodejs.function_name
+    create_project   = aws_lambda_function.create_project_nodejs.function_name
   }
-}
-
-output "nameservers" {
-  description = "Route53 hosted zone nameservers - configure these with your domain registrar"
-  value       = aws_route53_zone.main.name_servers
 }
 
 output "hosted_zone_id" {
   description = "Route53 hosted zone ID"
-  value       = aws_route53_zone.main.zone_id
+  value       = data.aws_route53_zone.domain.zone_id
 }

@@ -1,16 +1,19 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { LoginPage } from './pages/LoginPage';
+import { TimesheetDashboard } from './pages/TimesheetDashboard';
 import { ProjectsPage } from './pages/ProjectsPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { AccountPage } from './pages/AccountPage';
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/projects" replace />} />
-      <Route path="/projects" element={<ProjectsPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/account" element={<AccountPage />} />
-    </Routes>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/dashboard" element={<TimesheetDashboard />} />
+        <Route path="/projects" element={<ProjectsPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

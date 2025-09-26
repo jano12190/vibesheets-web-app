@@ -1,38 +1,52 @@
-# AWS Secrets Manager for sensitive configuration
+# Use existing auth config secret or create new one
+data "aws_secretsmanager_secret" "auth_config_existing" {
+  count = var.existing_auth_secret_name != "" ? 1 : 0
+  name  = var.existing_auth_secret_name
+}
+
 resource "aws_secretsmanager_secret" "auth_config" {
+  count       = var.existing_auth_secret_name == "" ? 1 : 0
   name        = "${var.project_name}-auth-config-${var.environment}"
   description = "Authentication configuration for VibeSheets"
   
-  # Create empty secret that will be populated manually after deployment
   recovery_window_in_days = 7
 }
 
-# Stripe payment configuration
-resource "aws_secretsmanager_secret" "stripe_config" {
-  name        = "${var.project_name}-stripe-config-${var.environment}"
-  description = "Stripe payment configuration for VibeSheets"
+# Use existing MongoDB config secret or create new one
+data "aws_secretsmanager_secret" "mongodb_config_existing" {
+  count = var.existing_mongodb_secret_name != "" ? 1 : 0
+  name  = var.existing_mongodb_secret_name
+}
+
+resource "aws_secretsmanager_secret" "mongodb_config" {
+  count       = var.existing_mongodb_secret_name == "" ? 1 : 0
+  name        = "${var.project_name}-mongodb-config-${var.environment}"
+  description = "MongoDB Atlas configuration for VibeSheets"
   
   recovery_window_in_days = 7
 }
 
-# Note: The secret values should be set manually after deployment using AWS CLI:
+# Local values to determine which secrets to use
+locals {
+  auth_secret_arn    = var.existing_auth_secret_name != "" ? data.aws_secretsmanager_secret.auth_config_existing[0].arn : aws_secretsmanager_secret.auth_config[0].arn
+  mongodb_secret_arn = var.existing_mongodb_secret_name != "" ? data.aws_secretsmanager_secret.mongodb_config_existing[0].arn : aws_secretsmanager_secret.mongodb_config[0].arn
+}
+
+
+# Note: If using existing secrets, make sure they contain:
 # 
-# Auth0/Google configuration:
-# aws secretsmanager put-secret-value \
-#   --secret-id vibesheets-auth-config-prod \
-#   --secret-string '{
-#     "auth0_domain": "your-domain.auth0.com",
-#     "auth0_client_id": "your-client-id", 
-#     "auth0_client_secret": "your-client-secret",
-#     "google_client_id": "your-google-client-id",
-#     "google_client_secret": "your-google-client-secret"
-#   }'
+# Auth config secret should contain:
+# {
+#   "auth0_domain": "your-domain.auth0.com",
+#   "auth0_client_id": "your-client-id",
+#   "auth0_client_secret": "your-client-secret",
+#   "auth0_audience": "https://api.vibesheets.com",
+#   "google_client_id": "your-google-client-id",
+#   "google_client_secret": "your-google-client-secret"
+# }
 #
-# Stripe configuration:
-# aws secretsmanager put-secret-value \
-#   --secret-id vibesheets-stripe-config-prod \
-#   --secret-string '{
-#     "stripe_public_key": "pk_live_...",
-#     "stripe_secret_key": "sk_live_...",
-#     "stripe_webhook_secret": "whsec_..."
-#   }'
+# MongoDB config secret should contain:
+# {
+#   "mongodb_uri": "mongodb+srv://...",
+#   "mongodb_database": "vibesheets"
+# }
