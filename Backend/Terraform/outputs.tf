@@ -46,5 +46,5 @@ output "lambda_function_names" {
 
 output "hosted_zone_id" {
   description = "Route53 hosted zone ID"
-  value       = data.aws_route53_zone.domain.zone_id
+  value       = local.zone_id
 }

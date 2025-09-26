@@ -19,7 +19,7 @@ locals {
 # Use existing ACM certificate if provided
 data "aws_acm_certificate" "existing" {
   count  = var.existing_acm_certificate_arn != "" ? 1 : 0
-  arn    = var.existing_acm_certificate_arn
+  domain = var.domain_name
 }
 
 # Create new SSL Certificate if not using existing
