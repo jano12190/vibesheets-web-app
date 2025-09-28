@@ -92,7 +92,11 @@
       "Bash(git stash show:*)",
       "Bash(npm ls:*)",
       "Bash(pkill:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(aws iam list-policies:*)",
+      "Bash(aws apigateway get-domain-name:*)",
+      "Bash(npm view:*)",
+      "Bash(aws acm list-certificates:*)"
     ],
     "deny": []
   }

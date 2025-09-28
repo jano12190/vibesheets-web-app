@@ -1,6 +1,11 @@
+# Random suffix for unique IAM names
+resource "random_id" "iam_suffix" {
+  byte_length = 4
+}
+
 # IAM role for Lambda functions
 resource "aws_iam_role" "lambda_role" {
-  name = "${var.project_name}-lambda-role"
+  name = "${var.project_name}-lambda-role-${random_id.iam_suffix.hex}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -29,7 +34,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 
 # Secrets Manager access policy for Lambda functions
 resource "aws_iam_policy" "lambda_secrets_policy" {
-  name        = "${var.project_name}-lambda-secrets-policy"
+  name        = "${var.project_name}-lambda-secrets-policy-${random_id.iam_suffix.hex}"
   description = "Policy for Lambda functions to access Secrets Manager"
 
   policy = jsonencode({

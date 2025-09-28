@@ -72,14 +72,7 @@ jobs:
       working-directory: ./Backend/Terraform
       run: chmod +x build_nodejs_lambdas.sh
 
-    - name: Import existing resources (ignore errors)
-      working-directory: ./Backend/Terraform
-      run: |
-        # Import existing AWS resources to avoid conflicts
-        terraform import aws_s3_bucket.frontend vibesheets-frontend-prod || true
-        terraform import aws_api_gateway_domain_name.api api.vibesheets.com || true
-        terraform import aws_iam_role.lambda_role vibesheets-lambda-role || true
-        terraform import aws_iam_policy.lambda_secrets_policy arn:aws:iam::654654511214:policy/vibesheets-lambda-secrets-policy || true
+    # Skip imports - using unique names to avoid conflicts
 
     - name: Terraform Plan
       working-directory: ./Backend/Terraform

@@ -1,6 +1,6 @@
 # S3 bucket for frontend hosting
 resource "aws_s3_bucket" "frontend" {
-  bucket = "vibesheets-frontend-prod"
+  bucket = "${var.project_name}-frontend-${var.environment}-${random_id.bucket_suffix.hex}"
 }
 
 resource "aws_s3_bucket_versioning" "frontend" {
@@ -54,8 +54,12 @@ resource "aws_s3_bucket_policy" "frontend" {
   })
 }
 
-# Random suffix for unique CloudFront OAC name
+# Random suffixes for unique names
 resource "random_id" "oac_suffix" {
+  byte_length = 4
+}
+
+resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
