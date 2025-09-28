@@ -72,19 +72,14 @@ jobs:
       working-directory: ./Backend/Terraform
       run: chmod +x build_nodejs_lambdas.sh
 
-    - name: Clean up conflicting resources (ignore errors)
+    - name: Import existing resources (ignore errors)
       working-directory: ./Backend/Terraform
       run: |
-        # Delete existing conflicting Route53 record
-        aws route53 change-resource-record-sets --hosted-zone-id Z0163648WZSFKALV4Z2F --change-batch '{
-          "Changes": [{
-            "Action": "DELETE",
-            "ResourceRecordSet": {
-              "Name": "api.vibesheets.com",
-              "Type": "A"
-            }
-          }]
-        }' || true
+        # Import existing AWS resources to avoid conflicts
+        terraform import aws_s3_bucket.frontend vibesheets-frontend-prod || true
+        terraform import aws_api_gateway_domain_name.api api.vibesheets.com || true
+        terraform import aws_iam_role.lambda_role vibesheets-lambda-role || true
+        terraform import aws_iam_policy.lambda_secrets_policy arn:aws:iam::654654511214:policy/vibesheets-lambda-secrets-policy || true
 
     - name: Terraform Plan
       working-directory: ./Backend/Terraform
