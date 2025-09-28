@@ -84,7 +84,6 @@ resource "aws_lambda_function" "clock_status_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -105,7 +104,6 @@ resource "aws_lambda_function" "clock_in_out_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -126,7 +124,6 @@ resource "aws_lambda_function" "get_timesheets_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -147,7 +144,6 @@ resource "aws_lambda_function" "update_timesheet_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -168,7 +164,6 @@ resource "aws_lambda_function" "export_timesheet_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -189,7 +184,6 @@ resource "aws_lambda_function" "get_projects_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }
@@ -210,7 +204,6 @@ resource "aws_lambda_function" "create_project_nodejs" {
     variables = {
       AUTH_SECRET_NAME    = var.existing_auth_secret_name
       MONGODB_SECRET_NAME = var.existing_mongodb_secret_name
-      AWS_REGION         = var.aws_region
       ALLOWED_ORIGINS    = var.allowed_origins != "" ? var.allowed_origins : "https://${var.domain_name}"
     }
   }

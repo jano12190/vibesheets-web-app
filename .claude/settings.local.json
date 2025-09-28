@@ -96,7 +96,13 @@
       "Bash(aws iam list-policies:*)",
       "Bash(aws apigateway get-domain-name:*)",
       "Bash(npm view:*)",
-      "Bash(aws acm list-certificates:*)"
+      "Bash(aws acm list-certificates:*)",
+      "Bash(aws acm describe-certificate:*)",
+      "Bash(./build_nodejs_lambdas.sh:*)",
+      "Bash(for func in auth_config clock_status clock_in_out get_timesheets update_timesheet export_timesheet get_projects create_project)",
+      "Bash(do tar -czf ../lambda_packages/$func_nodejs.zip $func.js node_modules utils)",
+      "Bash(tar:*)",
+      "Bash(echo \"Created $func_nodejs.zip\")"
     ],
     "deny": []
   }
