@@ -54,9 +54,14 @@ resource "aws_s3_bucket_policy" "frontend" {
   })
 }
 
+# Random suffix for unique CloudFront OAC name
+resource "random_id" "oac_suffix" {
+  byte_length = 4
+}
+
 # CloudFront Origin Access Control
 resource "aws_cloudfront_origin_access_control" "frontend" {
-  name                              = "${var.project_name}-frontend-oac"
+  name                              = "${var.project_name}-frontend-oac-${random_id.oac_suffix.hex}"
   description                       = "OAC for VibeSheets frontend"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"

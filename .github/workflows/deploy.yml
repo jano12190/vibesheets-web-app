@@ -68,6 +68,24 @@ jobs:
         existing_mongodb_secret_name = "vibesheets-mongodb-config-prod"
         EOF
 
+    - name: Fix build script permissions
+      working-directory: ./Backend/Terraform
+      run: chmod +x build_nodejs_lambdas.sh
+
+    - name: Clean up conflicting resources (ignore errors)
+      working-directory: ./Backend/Terraform
+      run: |
+        # Delete existing conflicting Route53 record
+        aws route53 change-resource-record-sets --hosted-zone-id Z0163648WZSFKALV4Z2F --change-batch '{
+          "Changes": [{
+            "Action": "DELETE",
+            "ResourceRecordSet": {
+              "Name": "api.vibesheets.com",
+              "Type": "A"
+            }
+          }]
+        }' || true
+
     - name: Terraform Plan
       working-directory: ./Backend/Terraform
       run: terraform plan -out=tfplan
