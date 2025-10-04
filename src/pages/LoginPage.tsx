@@ -7,7 +7,8 @@ export function LoginPage() {
   const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
-    initAuth();
+    // Skip auth initialization for now
+    setAuthInitialized(true);
   }, []);
 
   const initAuth = async () => {
