@@ -11,21 +11,21 @@ export function LoginPage() {
     setAuthInitialized(true);
   }, []);
 
-  const initAuth = async () => {
-    try {
-      await authService.initialize();
-      setAuthInitialized(true);
+  // const initAuth = async () => {
+  //   try {
+  //     await authService.initialize();
+  //     setAuthInitialized(true);
       
-      // Check if already authenticated and redirect
-      const isAuthenticated = await authService.isAuthenticated();
-      if (isAuthenticated) {
-        window.location.href = '/dashboard';
-      }
-    } catch (error) {
-      console.error('Auth initialization failed:', error);
-      setError('Failed to initialize authentication');
-    }
-  };
+  //     // Check if already authenticated and redirect
+  //     const isAuthenticated = await authService.isAuthenticated();
+  //     if (isAuthenticated) {
+  //       window.location.href = '/dashboard';
+  //     }
+  //   } catch (error) {
+  //     console.error('Auth initialization failed:', error);
+  //     setError('Failed to initialize authentication');
+  //   }
+  // };
 
   const handleAuth0Login = async () => {
     if (!authInitialized) {
