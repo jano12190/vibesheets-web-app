@@ -102,7 +102,9 @@
       "Bash(for func in auth_config clock_status clock_in_out get_timesheets update_timesheet export_timesheet get_projects create_project)",
       "Bash(do tar -czf ../lambda_packages/$func_nodejs.zip $func.js node_modules utils)",
       "Bash(tar:*)",
-      "Bash(echo \"Created $func_nodejs.zip\")"
+      "Bash(echo \"Created $func_nodejs.zip\")",
+      "Bash(npx vercel:*)",
+      "Bash(vercel logs:*)"
     ],
     "deny": []
   }

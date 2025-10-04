@@ -1,0 +1,10 @@
+{
+  "name": "vibesheets-api",
+  "version": "1.0.0",
+  "description": "VibeSheets API functions for Vercel",
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-client": "^2.1.0"
+  }
+}
