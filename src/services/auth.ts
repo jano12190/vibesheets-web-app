@@ -41,9 +41,22 @@ class AuthService {
           });
         }
 
-        // Handle redirect callback only on dashboard page
-        if (window.location.pathname === '/dashboard' && window.location.search.includes('code=') && this.auth0Client) {
-          console.log('Handling Auth0 callback with code:', window.location.search);
+        // Handle redirect callback for both success and error
+        if (window.location.pathname === '/dashboard' && (window.location.search.includes('code=') || window.location.search.includes('error=')) && this.auth0Client) {
+          console.log('Handling Auth0 callback with params:', window.location.search);
+          
+          // Check for error in URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const error = urlParams.get('error');
+          const errorDescription = urlParams.get('error_description');
+          
+          if (error) {
+            console.error('Auth0 returned error:', error, errorDescription);
+            window.history.replaceState({}, document.title, '/dashboard');
+            window.location.href = '/';
+            return;
+          }
+          
           try {
             const result = await this.auth0Client.handleRedirectCallback();
             console.log('Auth0 callback result:', result);
