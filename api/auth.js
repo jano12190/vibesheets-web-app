@@ -21,7 +21,7 @@ export default function handler(req, res) {
       auth0: {
         domain: authConfig.auth0_domain,
         clientId: authConfig.auth0_client_id,
-        redirectUri: `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/dashboard`,
+        redirectUri: 'https://vibesheets.com/dashboard',
         audience: authConfig.auth0_audience,
         scope: 'openid profile email'
       },
