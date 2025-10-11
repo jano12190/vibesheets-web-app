@@ -52,6 +52,7 @@ class AuthService {
           
           if (error) {
             console.error('Auth0 returned error:', error, errorDescription);
+            alert(`Auth0 Error: ${error}\nDescription: ${errorDescription}`);
             window.history.replaceState({}, document.title, '/dashboard');
             window.location.href = '/';
             return;
