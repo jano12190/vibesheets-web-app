@@ -43,9 +43,12 @@ class AuthService {
 
         // Handle redirect callback only on dashboard page
         if (window.location.pathname === '/dashboard' && window.location.search.includes('code=') && this.auth0Client) {
+          console.log('Handling Auth0 callback with code:', window.location.search);
           try {
-            await this.auth0Client.handleRedirectCallback();
+            const result = await this.auth0Client.handleRedirectCallback();
+            console.log('Auth0 callback result:', result);
             window.history.replaceState({}, document.title, '/dashboard');
+            console.log('Auth0 callback completed successfully');
           } catch (error) {
             console.error('Auth callback handling failed:', error);
             window.location.href = '/';
@@ -95,10 +98,13 @@ class AuthService {
 
   async isAuthenticated(): Promise<boolean> {
     if (!this.auth0Client) {
+      console.log('Auth check: No auth0Client');
       return false;
     }
     
-    return await this.auth0Client.isAuthenticated();
+    const result = await this.auth0Client.isAuthenticated();
+    console.log('Auth check result:', result);
+    return result;
   }
 
   async getUser(): Promise<User | undefined> {
