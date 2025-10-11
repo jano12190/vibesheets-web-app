@@ -41,15 +41,15 @@ class AuthService {
           });
         }
 
-        // Handle redirect callback
-        if (window.location.search.includes('code=') && this.auth0Client) {
+        // Handle redirect callback only on dashboard page
+        if (window.location.pathname === '/dashboard' && window.location.search.includes('code=') && this.auth0Client) {
           try {
             await this.auth0Client.handleRedirectCallback();
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.history.replaceState({}, document.title, '/dashboard');
           } catch (error) {
             console.error('Auth callback handling failed:', error);
-            // Clear URL params if callback fails
-            window.history.replaceState({}, document.title, window.location.pathname);
+            window.location.href = '/';
+            return;
           }
         }
       } else {
