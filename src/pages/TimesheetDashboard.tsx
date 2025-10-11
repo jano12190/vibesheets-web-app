@@ -66,7 +66,9 @@ export function TimesheetDashboard() {
       await authService.initialize();
       
       const isAuthenticated = await authService.isAuthenticated();
+      console.log('Dashboard auth check:', isAuthenticated);
       if (!isAuthenticated) {
+        console.log('Not authenticated, redirecting to login');
         window.location.href = '/';
         return;
       }

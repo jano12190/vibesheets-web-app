@@ -14,7 +14,9 @@ export function LoginPage() {
         
         // Check if already authenticated and redirect
         const isAuthenticated = await authService.isAuthenticated();
+        console.log('Login page auth check:', isAuthenticated);
         if (isAuthenticated) {
+          console.log('Already authenticated, redirecting to dashboard');
           window.location.href = '/dashboard';
         }
       } catch (error) {
