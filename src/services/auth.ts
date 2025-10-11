@@ -43,8 +43,14 @@ class AuthService {
 
         // Handle redirect callback
         if (window.location.search.includes('code=') && this.auth0Client) {
-          await this.auth0Client.handleRedirectCallback();
-          window.history.replaceState({}, document.title, window.location.pathname);
+          try {
+            await this.auth0Client.handleRedirectCallback();
+            window.history.replaceState({}, document.title, window.location.pathname);
+          } catch (error) {
+            console.error('Auth callback handling failed:', error);
+            // Clear URL params if callback fails
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
         }
       } else {
         throw new Error('Failed to load Auth0 configuration');

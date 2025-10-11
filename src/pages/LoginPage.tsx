@@ -20,6 +20,7 @@ export function LoginPage() {
       } catch (error) {
         console.error('Auth initialization failed:', error);
         setError('Failed to initialize authentication');
+        setAuthInitialized(true); // Allow user to retry login
       }
     };
 
