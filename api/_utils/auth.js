@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const jwksClient = require('jwks-client');
 
 let cachedAuthConfig = null;
 let jwksClients = {};
@@ -34,11 +33,12 @@ function getAuthConfig() {
   return cachedAuthConfig;
 }
 
-function getJwksClient() {
+async function getJwksClient() {
   const authConfig = getAuthConfig();
   const domain = authConfig.auth0_domain;
   
   if (!jwksClients[domain]) {
+    const { default: jwksClient } = await import('jwks-client');
     jwksClients[domain] = jwksClient({
       jwksUri: `https://${domain}/.well-known/jwks.json`,
       requestHeaders: {},
@@ -51,7 +51,7 @@ function getJwksClient() {
 
 async function getKey(header, callback) {
   try {
-    const client = getJwksClient();
+    const client = await getJwksClient();
     client.getSigningKey(header.kid, (err, key) => {
       if (err) {
         console.error('Failed to get signing key:', err.message);
