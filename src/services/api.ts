@@ -119,7 +119,7 @@ class ApiService {
       queryParams.append('endDate', params.endDate);
     }
 
-    const endpoint = `/timesheets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+    const endpoint = `/api/timesheets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
     const response = await this.request<any>(endpoint);
     return response;
   }
