@@ -7,8 +7,23 @@ export function LoginPage() {
   const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
-    // Skip auth initialization for now
-    setAuthInitialized(true);
+    const initAuth = async () => {
+      try {
+        await authService.initialize();
+        setAuthInitialized(true);
+        
+        // Check if already authenticated and redirect
+        const isAuthenticated = await authService.isAuthenticated();
+        if (isAuthenticated) {
+          window.location.href = '/dashboard';
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+        setError('Failed to initialize authentication');
+      }
+    };
+
+    initAuth();
   }, []);
 
 
