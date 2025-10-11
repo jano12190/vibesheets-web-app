@@ -39,7 +39,7 @@ export interface TimesheetData {
 }
 
 class ApiService {
-  private baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.vibesheets.com';
+  private baseUrl = import.meta.env.VITE_API_BASE_URL || '';
 
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
@@ -71,7 +71,7 @@ class ApiService {
   }
 
   async clockIn(): Promise<ClockResponse> {
-    const response = await this.request<any>('/clock', {
+    const response = await this.request<any>('/api/clock', {
       method: 'POST',
       body: JSON.stringify({ action: 'clock_in' })
     });
@@ -84,7 +84,7 @@ class ApiService {
   }
 
   async clockOut(): Promise<ClockResponse> {
-    const response = await this.request<any>('/clock', {
+    const response = await this.request<any>('/api/clock', {
       method: 'POST',
       body: JSON.stringify({ action: 'clock_out' })
     });
@@ -98,7 +98,7 @@ class ApiService {
   }
 
   async getClockStatus(): Promise<ClockStatus> {
-    const response = await this.request<any>('/status');
+    const response = await this.request<any>('/api/status');
     return response;
   }
 
@@ -125,7 +125,7 @@ class ApiService {
   }
 
   async updateTimesheet(entry: Partial<TimeEntry> & { timestamp: string }): Promise<{ success: boolean }> {
-    const response = await this.request<any>('/timesheets', {
+    const response = await this.request<any>('/api/timesheets', {
       method: 'PUT',
       body: JSON.stringify(entry)
     });
@@ -134,7 +134,7 @@ class ApiService {
   }
 
   async deleteTimesheet(timestamp: string): Promise<{ success: boolean }> {
-    const response = await this.request<any>('/timesheets', {
+    const response = await this.request<any>('/api/timesheets', {
       method: 'DELETE',
       body: JSON.stringify({ timestamp })
     });
@@ -148,7 +148,7 @@ class ApiService {
     startDate?: string;
     endDate?: string;
   }): Promise<{ content: string; filename: string }> {
-    const response = await this.request<any>('/export', {
+    const response = await this.request<any>('/api/export', {
       method: 'POST',
       body: JSON.stringify(params)
     });
@@ -160,12 +160,12 @@ class ApiService {
   }
 
   async getProjects(): Promise<{ id: string; name: string; client: string }[]> {
-    const response = await this.request<any>('/projects');
+    const response = await this.request<any>('/api/projects');
     return response.projects || [];
   }
 
   async createProject(project: { name: string; client: string; hourlyRate?: number }): Promise<{ success: boolean }> {
-    const response = await this.request<any>('/projects', {
+    const response = await this.request<any>('/api/projects', {
       method: 'POST',
       body: JSON.stringify(project)
     });
