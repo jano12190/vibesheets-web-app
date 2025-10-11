@@ -104,7 +104,9 @@
       "Bash(tar:*)",
       "Bash(echo \"Created $func_nodejs.zip\")",
       "Bash(npx vercel:*)",
-      "Bash(vercel logs:*)"
+      "Bash(vercel logs:*)",
+      "Bash(vercel:*)",
+      "Bash(WORKDIR=\"/mnt/c/Users/ja_no/OneDrive/Desktop/VibeSheets\")"
     ],
     "deny": []
   }
