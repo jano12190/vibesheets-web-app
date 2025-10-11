@@ -21,8 +21,8 @@ class AuthService {
   async initialize(): Promise<void> {
     try {
       // Fetch Auth0 configuration from backend
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.vibesheets.com';
-      const response = await fetch(`${apiBaseUrl}/auth`);
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await fetch(`${apiBaseUrl}/api/auth`);
       const data = await response.json();
       
       if (data.success && data.config) {
