@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     // Authenticate user
     const user = await authenticateUser(req);
-    const db = await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const { format, startDate, endDate } = req.body;
     

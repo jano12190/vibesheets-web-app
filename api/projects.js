@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   try {
     // Authenticate user
     const user = await authenticateUser(req);
-    const db = await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     if (req.method === 'GET') {
       // Get user projects
