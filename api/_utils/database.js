@@ -17,15 +17,13 @@ async function connectToDatabase() {
       throw new Error('MONGODB_URI environment variable not set');
     }
     
-    const client = await MongoClient.connect(mongoUri, {
+    const client = new MongoClient(mongoUri, {
       maxPoolSize: 1,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 10000,
-      connectTimeoutMS: 10000,
-      bufferMaxEntries: 0,
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     });
+    
+    await client.connect();
 
     const db = client.db(dbName);
     
