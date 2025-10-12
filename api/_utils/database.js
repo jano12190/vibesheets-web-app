@@ -18,13 +18,13 @@ async function connectToDatabase() {
     }
     
     const client = await MongoClient.connect(mongoUri, {
-      maxPoolSize: 10,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      ssl: true,
-      tls: true,
-      tlsAllowInvalidCertificates: false,
-      tlsAllowInvalidHostnames: false,
+      maxPoolSize: 1,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      bufferMaxEntries: 0,
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
 
     const db = client.db(dbName);
