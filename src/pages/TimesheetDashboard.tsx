@@ -661,47 +661,37 @@ export function TimesheetDashboard() {
                   
                   <div className="space-y-2">
                     {day.entries.length > 0 ? (
-                      // Group entries by pairs (clock in/out)
-                      (() => {
-                        const sessions = [];
-                        for (let i = 0; i < day.entries.length; i += 2) {
-                          const clockIn = day.entries[i];
-                          const clockOut = day.entries[i + 1];
-                          if (clockIn && clockOut) {
-                            sessions.push([clockIn, clockOut]);
-                          }
-                        }
-                        return sessions.map(([clockIn, clockOut], sessionIndex) => (
-                          <div key={sessionIndex} className="flex justify-between items-center text-white/80 bg-white/5 rounded px-3 py-2">
-                            <div className="flex items-center gap-4">
-                              <span className="text-green-400">
-                                {format(new Date(clockIn.timestamp), 'h:mm a')}
-                              </span>
-                              <span className="text-white/40">→</span>
-                              <span className="text-red-400">
-                                {format(new Date(clockOut.timestamp), 'h:mm a')}
-                              </span>
-                              <span className="text-xs text-white/60">
-                                ({clockOut.hours?.toFixed(1) || '0.0'} hours)
-                              </span>
-                            </div>
-                            <button 
-                              onClick={() => handleEditEntry({
-                                timestamp: clockIn.timestamp,
-                                clockOutTime: clockOut.timestamp,
-                                type: 'session',
-                                date: clockIn.date
-                              })}
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-2 rounded transition-colors"
-                              title="Edit entry"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
+                      // Display work sessions (each entry has both clock in and out times)
+                      day.entries.map((entry, sessionIndex) => (
+                        <div key={sessionIndex} className="flex justify-between items-center text-white/80 bg-white/5 rounded px-3 py-2">
+                          <div className="flex items-center gap-4">
+                            <span className="text-green-400">
+                              {entry.clock_in_time ? format(new Date(entry.clock_in_time), 'h:mm a') : 'N/A'}
+                            </span>
+                            <span className="text-white/40">→</span>
+                            <span className="text-red-400">
+                              {entry.clockOutTime ? format(new Date(entry.clockOutTime), 'h:mm a') : 'N/A'}
+                            </span>
+                            <span className="text-xs text-white/60">
+                              ({entry.hours?.toFixed(1) || '0.0'} hours)
+                            </span>
                           </div>
-                        ));
-                      })()
+                          <button 
+                            onClick={() => handleEditEntry({
+                              timestamp: entry.timestamp,
+                              clockOutTime: entry.clockOutTime,
+                              type: 'session',
+                              date: entry.date
+                            })}
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-2 rounded transition-colors"
+                            title="Edit entry"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))
                     ) : (
                       <div className="text-white/60 text-center py-4">
                         No time entries for this day
