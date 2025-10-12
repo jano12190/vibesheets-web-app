@@ -47,7 +47,7 @@ export function TimesheetDashboard() {
     endTime: '',
     project: 'default'
   });
-  const [period] = useState<'this-month'>('this-month');
+  const [period, setPeriod] = useState<'today' | 'this-week' | 'this-month' | 'custom'>('today');
 
   useEffect(() => {
     initializeDashboard();
@@ -100,7 +100,7 @@ export function TimesheetDashboard() {
 
   const loadTimesheets = async () => {
     try {
-      const data = await apiService.getTimesheets({ period: 'this-month' });
+      const data = await apiService.getTimesheets({ period });
       setTimesheetData(data);
     } catch (error) {
       console.error('Failed to load timesheets:', error);
@@ -213,8 +213,13 @@ export function TimesheetDashboard() {
           project: editEntry.project
         });
       } else {
-        // Create new manual entry (would need a new API endpoint)
-        console.log('Creating new entry:', editEntry);
+        // Create new manual entry
+        await apiService.createManualEntry({
+          date: editEntry.date,
+          clockIn: editEntry.clockIn,
+          clockOut: editEntry.clockOut,
+          project: editEntry.project
+        });
       }
       
       setShowEditEntry(false);
@@ -625,14 +630,20 @@ export function TimesheetDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <label className="text-white/80 text-sm">Filter by:</label>
-                <select className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm">
-                  <option value="all" className="bg-gray-800 text-white">All Time</option>
+                <select 
+                  value={period}
+                  onChange={(e) => {
+                    const newPeriod = e.target.value as 'today' | 'this-week' | 'this-month' | 'custom';
+                    setPeriod(newPeriod);
+                    if (newPeriod !== 'custom') {
+                      loadTimesheets();
+                    }
+                  }}
+                  className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
+                >
                   <option value="today" className="bg-gray-800 text-white">Today</option>
-                  <option value="yesterday" className="bg-gray-800 text-white">Yesterday</option>
-                  <option value="week" className="bg-gray-800 text-white">This Week</option>
-                  <option value="lastWeek" className="bg-gray-800 text-white">Last Week</option>
-                  <option value="month" className="bg-gray-800 text-white">This Month</option>
-                  <option value="lastMonth" className="bg-gray-800 text-white">Last Month</option>
+                  <option value="this-week" className="bg-gray-800 text-white">Last Week</option>
+                  <option value="this-month" className="bg-gray-800 text-white">This Month</option>
                   <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
                 </select>
               </div>

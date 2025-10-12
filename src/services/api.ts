@@ -183,6 +183,27 @@ class ApiService {
     
     return { success: response.success };
   }
+
+  async createManualEntry(entry: { date: string; clockIn: string; clockOut: string; project: string }): Promise<{ success: boolean }> {
+    // Calculate hours from clock in/out times
+    const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
+    const clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
+    
+    const response = await this.request<any>('/api/manual-entry', {
+      method: 'POST',
+      body: JSON.stringify({
+        date: entry.date,
+        clock_in_time: clockInDateTime.toISOString(),
+        clock_out_time: clockOutDateTime.toISOString(),
+        hours: Math.round(hours * 100) / 100,
+        project_id: entry.project || 'default',
+        type: 'manual'
+      })
+    });
+    
+    return { success: response.success };
+  }
 }
 
 export const apiService = new ApiService();
