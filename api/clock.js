@@ -97,7 +97,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         message: 'Clocked in successfully',
-        session: newSession
+        timestamp: now.toISOString()
       });
 
     } else if (action === 'clock_out') {
@@ -144,8 +144,8 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         message: 'Clocked out successfully',
-        timeEntry: timeEntry,
-        hoursWorked: hoursWorked
+        timestamp: now.toISOString(),
+        hours: Math.round(hoursWorked * 100) / 100
       });
     }
 

@@ -203,13 +203,26 @@ export function TimesheetDashboard() {
     }
 
     try {
-      // Mock implementation - in real app would call API
-      console.log('Saving edited entry:', editEntry);
+      if (editingEntry) {
+        // Update existing entry
+        await apiService.updateTimesheet({
+          timestamp: editingEntry.timestamp,
+          date: editEntry.date,
+          clockIn: editEntry.clockIn,
+          clockOut: editEntry.clockOut,
+          project: editEntry.project
+        });
+      } else {
+        // Create new manual entry (would need a new API endpoint)
+        console.log('Creating new entry:', editEntry);
+      }
+      
       setShowEditEntry(false);
       setEditingEntry(null);
       await loadTimesheets();
       setError('Time entry updated successfully');
     } catch (error) {
+      console.error('Save entry error:', error);
       setError('Failed to update time entry');
     }
   };

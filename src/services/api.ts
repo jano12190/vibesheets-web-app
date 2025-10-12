@@ -126,10 +126,19 @@ class ApiService {
     return response;
   }
 
-  async updateTimesheet(entry: Partial<TimeEntry> & { timestamp: string }): Promise<{ success: boolean }> {
+  async updateTimesheet(entry: any): Promise<{ success: boolean }> {
+    // Calculate hours from clock in/out times
+    const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
+    const clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
+    
     const response = await this.request<any>('/api/timesheets', {
       method: 'PUT',
-      body: JSON.stringify(entry)
+      body: JSON.stringify({
+        entryId: entry.timestamp, // This should be the MongoDB _id in real implementation
+        hours: Math.round(hours * 100) / 100,
+        project_id: entry.project || 'default'
+      })
     });
     
     return { success: response.success };

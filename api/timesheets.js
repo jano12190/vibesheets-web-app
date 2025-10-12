@@ -40,13 +40,47 @@ export default async function handler(req, res) {
         .limit(100)
         .toArray();
 
-      // Calculate total hours
-      const totalHours = timeEntries.reduce((sum, entry) => sum + (entry.hours || 0), 0);
+      // Group entries by date and calculate totals
+      const entriesByDate = {};
+      let totalHours = 0;
+
+      timeEntries.forEach(entry => {
+        const date = entry.date;
+        if (!entriesByDate[date]) {
+          entriesByDate[date] = {
+            date,
+            entries: [],
+            totalHours: 0
+          };
+        }
+        
+        // Transform entry to match frontend expectations
+        const transformedEntry = {
+          user_id: entry.user_id,
+          timestamp: entry.clock_in_time || entry.created_at,
+          date: entry.date,
+          type: entry.clock_in_time ? 'clock_in' : 'clock_out',
+          hours: entry.hours || 0,
+          clock_in_time: entry.clock_in_time,
+          clockOutTime: entry.clock_out_time
+        };
+        
+        entriesByDate[date].entries.push(transformedEntry);
+        entriesByDate[date].totalHours += entry.hours || 0;
+        totalHours += entry.hours || 0;
+      });
+
+      // Convert to array format expected by frontend
+      const timesheets = Object.values(entriesByDate).sort((a, b) => new Date(b.date) - new Date(a.date));
 
       return res.status(200).json({
         success: true,
-        timeEntries,
-        totalHours: Math.round(totalHours * 100) / 100
+        data: {
+          timesheets,
+          entries: timeEntries,
+          totalHours: Math.round(totalHours * 100) / 100,
+          period: 'this-month'
+        }
       });
 
     } else if (req.method === 'PUT') {

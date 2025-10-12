@@ -31,8 +31,12 @@ export default async function handler(req, res) {
     if (!session) {
       return res.status(200).json({
         success: true,
-        status: 'clocked_out',
-        session: null
+        userId: user.userId,
+        status: 'out',
+        isClockedIn: false,
+        lastUpdated: null,
+        clockInTime: null,
+        currentSessionHours: 0
       });
     }
 
@@ -46,11 +50,12 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      status: session.status,
-      session: {
-        ...session,
-        currentSessionDuration: Math.round(currentSessionDuration * 100) / 100
-      }
+      userId: user.userId,
+      status: session.status === 'clocked_in' ? 'in' : 'out',
+      isClockedIn: session.status === 'clocked_in',
+      lastUpdated: session.last_updated,
+      clockInTime: session.clock_in_time,
+      currentSessionHours: Math.round(currentSessionDuration * 100) / 100
     });
 
   } catch (error) {
