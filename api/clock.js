@@ -18,7 +18,9 @@ export default async function handler(req, res) {
 
   try {
     // Authenticate user
+    console.log('Starting authentication...');
     const user = await authenticateUser(req);
+    console.log('Authentication successful for user:', user.userId);
     
     // Parse request body
     console.log('Request body:', req.body);
@@ -52,10 +54,13 @@ export default async function handler(req, res) {
     }
 
     // Connect to database
+    console.log('Connecting to database...');
     const { db } = await connectToDatabase();
+    console.log('Database connected successfully');
     
     const now = new Date();
     const dateString = now.toISOString().split('T')[0];
+    console.log('Current time:', now, 'Date string:', dateString);
 
     // Get current user session
     let session = await db.collection(COLLECTIONS.USER_SESSIONS).findOne({
