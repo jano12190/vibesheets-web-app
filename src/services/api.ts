@@ -44,6 +44,8 @@ class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
       const token = await authService.getAccessToken();
+      console.log('API request token length:', token ? token.length : 'null');
+      console.log('API request endpoint:', endpoint);
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers: {
