@@ -586,16 +586,16 @@ export function TimesheetDashboard() {
               </div>
 
               {/* Export Options */}
-              <div className="mt-8 flex flex-col gap-3">
+              <div className="mt-8 flex gap-3">
                 <button 
                   onClick={() => setShowInvoiceModal(true)}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
                 >
                   Generate Invoice (PDF)
                 </button>
                 <button 
                   onClick={() => handleExportCSV()}
-                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 px-6 rounded-lg font-medium transition-colors"
+                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
                 >
                   Export Hours (CSV)
                 </button>
