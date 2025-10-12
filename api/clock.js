@@ -21,13 +21,16 @@ export default async function handler(req, res) {
     const user = await authenticateUser(req);
     
     // Parse request body
+    console.log('Request body:', req.body);
     const { action, project_id = 'default' } = req.body;
+    console.log('Parsed action:', action);
 
     // Validate action
     if (!['clock_in', 'clock_out'].includes(action)) {
+      console.log('Invalid action received:', action);
       return res.status(400).json({
         success: false,
-        error: 'Invalid action. Must be clock_in or clock_out'
+        error: `Invalid action: "${action}". Must be clock_in or clock_out`
       });
     }
 
