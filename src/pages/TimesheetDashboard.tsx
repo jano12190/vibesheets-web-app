@@ -48,6 +48,15 @@ export function TimesheetDashboard() {
     project: 'default'
   });
   const [period, setPeriod] = useState<'today' | 'this-week' | 'this-month' | 'custom'>('today');
+  const [customDateRange, setCustomDateRange] = useState(() => {
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return {
+      startDate: localDate,
+      endDate: localDate
+    };
+  });
+  const [showCustomDateRange, setShowCustomDateRange] = useState(false);
 
   useEffect(() => {
     initializeDashboard();
@@ -101,7 +110,11 @@ export function TimesheetDashboard() {
   const loadTimesheets = async () => {
     try {
       const params = period === 'custom' 
-        ? { period: 'this-month' as const } // Default to this-month for custom until date range is implemented
+        ? { 
+            period: 'custom' as const,
+            startDate: customDateRange.startDate,
+            endDate: customDateRange.endDate
+          }
         : { period };
       const data = await apiService.getTimesheets(params);
       setTimesheetData(data);
@@ -241,7 +254,12 @@ export function TimesheetDashboard() {
       console.log('Starting CSV export...');
       
       const exportParams = period === 'custom' 
-        ? { format: 'csv' as const, period: 'this-month' as const }
+        ? { 
+            format: 'csv' as const, 
+            period: 'custom' as const,
+            startDate: customDateRange.startDate,
+            endDate: customDateRange.endDate
+          }
         : { format: 'csv' as const, period };
       const exportData = await apiService.exportTimesheet(exportParams);
 
@@ -638,14 +656,17 @@ export function TimesheetDashboard() {
                   onChange={(e) => {
                     const newPeriod = e.target.value as 'today' | 'this-week' | 'this-month' | 'custom';
                     setPeriod(newPeriod);
-                    if (newPeriod !== 'custom') {
+                    if (newPeriod === 'custom') {
+                      setShowCustomDateRange(true);
+                    } else {
+                      setShowCustomDateRange(false);
                       loadTimesheets();
                     }
                   }}
                   className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
                 >
                   <option value="today" className="bg-gray-800 text-white">Today</option>
-                  <option value="this-week" className="bg-gray-800 text-white">Last Week</option>
+                  <option value="this-week" className="bg-gray-800 text-white">This Week</option>
                   <option value="this-month" className="bg-gray-800 text-white">This Month</option>
                   <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
                 </select>
@@ -658,6 +679,50 @@ export function TimesheetDashboard() {
               </button>
             </div>
           </div>
+
+          {/* Custom Date Range */}
+          {showCustomDateRange && (
+            <div className="mb-6 bg-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-4">
+                <div>
+                  <label className="block text-white/80 text-sm mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.startDate}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
+                    className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-white/80 text-sm mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={customDateRange.endDate}
+                    onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
+                    className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
+                  />
+                </div>
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={() => loadTimesheets()}
+                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCustomDateRange(false);
+                      setPeriod('today');
+                      loadTimesheets();
+                    }}
+                    className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Time Entries List */}
           <div className="space-y-3 max-h-96 overflow-y-auto">
