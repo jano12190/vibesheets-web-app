@@ -100,7 +100,10 @@ export function TimesheetDashboard() {
 
   const loadTimesheets = async () => {
     try {
-      const data = await apiService.getTimesheets({ period });
+      const params = period === 'custom' 
+        ? { period: 'this-month' as const } // Default to this-month for custom until date range is implemented
+        : { period };
+      const data = await apiService.getTimesheets(params);
       setTimesheetData(data);
     } catch (error) {
       console.error('Failed to load timesheets:', error);
@@ -237,10 +240,10 @@ export function TimesheetDashboard() {
       setError(null);
       console.log('Starting CSV export...');
       
-      const exportData = await apiService.exportTimesheet({
-        format: 'csv',
-        period: 'this-month'
-      });
+      const exportParams = period === 'custom' 
+        ? { format: 'csv' as const, period: 'this-month' as const }
+        : { format: 'csv' as const, period };
+      const exportData = await apiService.exportTimesheet(exportParams);
 
       console.log('Export data received:', exportData);
 

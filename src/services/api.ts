@@ -23,6 +23,7 @@ export interface TimeEntry {
   type: 'clock_in' | 'clock_out';
   hours: number;
   clock_in_time?: string;
+  clockOutTime?: string;
 }
 
 export interface TimesheetData {
@@ -105,7 +106,7 @@ class ApiService {
   }
 
   async getTimesheets(params?: {
-    period?: 'today' | 'this-week' | 'this-month';
+    period?: 'today' | 'this-week' | 'this-month' | 'custom';
     startDate?: string;
     endDate?: string;
   }): Promise<TimesheetData> {
@@ -155,7 +156,7 @@ class ApiService {
 
   async exportTimesheet(params: {
     format: 'csv' | 'json';
-    period?: 'today' | 'this-week' | 'this-month';
+    period?: 'today' | 'this-week' | 'this-month' | 'custom';
     startDate?: string;
     endDate?: string;
   }): Promise<{ content: string; filename: string }> {
