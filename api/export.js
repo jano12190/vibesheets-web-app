@@ -1,5 +1,5 @@
 const { setCorsHeaders, authenticateUser } = require('./_utils/auth');
-const { connectToDatabase } = require('./_utils/database');
+const { connectToDatabase, COLLECTIONS } = require('./_utils/database');
 
 export default async function handler(req, res) {
   setCorsHeaders(res);
@@ -28,23 +28,28 @@ export default async function handler(req, res) {
       if (endDate) query.date.$lte = endDate;
     }
     
-    const timesheets = await db.collection('time_entries')
+    const timesheets = await db.collection(COLLECTIONS.TIME_ENTRIES)
       .find(query)
       .sort({ date: -1 })
       .toArray();
     
     if (format === 'csv') {
-      // Generate CSV
-      const csvHeader = 'Date,Type,Hours,Project\n';
-      const csvRows = timesheets.map(entry => 
-        `${entry.date},${entry.type},${entry.hours || 0},${entry.project || 'Default'}`
-      ).join('\n');
+      // Generate CSV content
+      const csvHeader = 'Date,Clock In,Clock Out,Hours,Project\n';
+      const csvRows = timesheets.map(entry => {
+        const clockIn = entry.clock_in_time ? new Date(entry.clock_in_time).toLocaleTimeString() : '';
+        const clockOut = entry.clock_out_time ? new Date(entry.clock_out_time).toLocaleTimeString() : '';
+        return `${entry.date},${clockIn},${clockOut},${entry.hours || 0},${entry.project_id || 'Default'}`;
+      }).join('\n');
       
-      const csvData = csvHeader + csvRows;
+      const csvContent = csvHeader + csvRows;
+      const filename = `timesheet-${new Date().toISOString().split('T')[0]}.csv`;
       
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="timesheet.csv"');
-      return res.status(200).send(csvData);
+      return res.status(200).json({
+        success: true,
+        content: csvContent,
+        filename: filename
+      });
     }
     
     // Default JSON response

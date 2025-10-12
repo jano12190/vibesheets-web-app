@@ -229,10 +229,15 @@ export function TimesheetDashboard() {
 
   const handleExportCSV = async () => {
     try {
+      setError(null);
+      console.log('Starting CSV export...');
+      
       const exportData = await apiService.exportTimesheet({
         format: 'csv',
         period: 'this-month'
       });
+
+      console.log('Export data received:', exportData);
 
       // Create and download CSV
       const blob = new Blob([exportData.content], { type: 'text/csv;charset=utf-8;' });
@@ -251,7 +256,7 @@ export function TimesheetDashboard() {
       setError('CSV export completed successfully');
     } catch (error) {
       console.error('CSV export failed:', error);
-      setError('Failed to export CSV file');
+      setError(`Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
