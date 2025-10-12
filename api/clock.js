@@ -22,7 +22,24 @@ export default async function handler(req, res) {
     
     // Parse request body
     console.log('Request body:', req.body);
-    const { action, project_id = 'default' } = req.body;
+    console.log('Request body type:', typeof req.body);
+    
+    let requestBody = req.body;
+    
+    // Handle case where body might be a string that needs parsing
+    if (typeof req.body === 'string') {
+      try {
+        requestBody = JSON.parse(req.body);
+      } catch (e) {
+        console.log('Failed to parse JSON body:', e);
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid JSON in request body'
+        });
+      }
+    }
+    
+    const { action, project_id = 'default' } = requestBody || {};
     console.log('Parsed action:', action);
 
     // Validate action
