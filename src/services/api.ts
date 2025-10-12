@@ -74,9 +74,16 @@ class ApiService {
   }
 
   async clockIn(): Promise<ClockResponse> {
+    // Get user's local date (not UTC)
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
     const response = await this.request<any>('/api/clock', {
       method: 'POST',
-      body: JSON.stringify({ action: 'clock_in' })
+      body: JSON.stringify({ 
+        action: 'clock_in',
+        localDate: localDate
+      })
     });
     
     return {
@@ -87,9 +94,16 @@ class ApiService {
   }
 
   async clockOut(): Promise<ClockResponse> {
+    // Get user's local date (not UTC)
+    const now = new Date();
+    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
     const response = await this.request<any>('/api/clock', {
       method: 'POST',
-      body: JSON.stringify({ action: 'clock_out' })
+      body: JSON.stringify({ 
+        action: 'clock_out',
+        localDate: localDate
+      })
     });
     
     return {

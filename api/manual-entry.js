@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     const timeEntry = {
       user_id: user.userId,
       project_id: project_id || 'default',
-      date: date,
+      date: date, // Use the date as provided (should be local date)
       clock_in_time: new Date(clock_in_time),
       clock_out_time: new Date(clock_out_time),
       hours: parseFloat(hours),

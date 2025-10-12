@@ -41,8 +41,19 @@ export default async function handler(req, res) {
       }
     }
     
-    const { action, project_id = 'default' } = requestBody || {};
+    // Connect to database
+    console.log('Connecting to database...');
+    const { db } = await connectToDatabase();
+    console.log('Database connected successfully');
+    
+    const now = new Date();
+    
+    const { action, project_id = 'default', timezone, localDate } = requestBody || {};
     console.log('Parsed action:', action);
+
+    // Use provided local date or fallback to UTC date
+    const dateString = localDate || now.toISOString().split('T')[0];
+    console.log('Current time:', now, 'Using date:', dateString);
 
     // Validate action
     if (!['clock_in', 'clock_out'].includes(action)) {
@@ -52,15 +63,6 @@ export default async function handler(req, res) {
         error: `Invalid action: "${action}". Must be clock_in or clock_out`
       });
     }
-
-    // Connect to database
-    console.log('Connecting to database...');
-    const { db } = await connectToDatabase();
-    console.log('Database connected successfully');
-    
-    const now = new Date();
-    const dateString = now.toISOString().split('T')[0];
-    console.log('Current time:', now, 'Date string:', dateString);
 
     // Get current user session
     console.log('Querying user session for user:', user.userId);
