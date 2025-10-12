@@ -63,9 +63,12 @@ export default async function handler(req, res) {
     console.log('Current time:', now, 'Date string:', dateString);
 
     // Get current user session
+    console.log('Querying user session for user:', user.userId);
+    console.log('Collections available:', COLLECTIONS);
     let session = await db.collection(COLLECTIONS.USER_SESSIONS).findOne({
       user_id: user.userId
     });
+    console.log('Session found:', session);
 
     if (action === 'clock_in') {
       // Check if already clocked in
@@ -148,6 +151,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('Clock in/out error:', error);
+    console.error('Error stack:', error.stack);
     
     if (error.message === 'Authentication failed') {
       return res.status(401).json({
