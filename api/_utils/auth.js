@@ -102,13 +102,22 @@ async function verifyToken(token) {
 
 async function authenticateUser(req) {
   try {
-    const token = req.headers?.authorization?.replace('Bearer ', '');
+    const authHeader = req.headers?.authorization;
+    console.log('Auth header present:', !!authHeader);
+    console.log('Auth header starts with Bearer:', authHeader?.startsWith('Bearer '));
+    
+    const token = authHeader?.replace('Bearer ', '');
+    console.log('Token extracted length:', token ? token.length : 'null');
     
     if (!token) {
+      console.log('No token provided in request');
       throw new Error('No token provided');
     }
 
+    console.log('Attempting to verify token...');
     const decoded = await verifyToken(token);
+    console.log('Token verification successful, user:', decoded.sub);
+    
     return {
       userId: decoded.sub,
       email: decoded.email,
@@ -116,6 +125,7 @@ async function authenticateUser(req) {
     };
   } catch (error) {
     console.error('Authentication failed:', error.message || 'Unknown error');
+    console.error('Auth error stack:', error.stack);
     throw new Error('Authentication failed');
   }
 }
