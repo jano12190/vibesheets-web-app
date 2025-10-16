@@ -8,6 +8,7 @@ export function TimesheetDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [clockStatus, setClockStatus] = useState<ClockStatus | null>(null);
   const [timesheetData, setTimesheetData] = useState<TimesheetData | null>(null);
+  const [summaryData, setSummaryData] = useState<TimesheetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -68,6 +69,12 @@ export function TimesheetDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Reload timesheets when period or custom date range changes
+  useEffect(() => {
+    if (loading) return; // Don't reload during initial load
+    loadTimesheets();
+  }, [period, customDateRange]);
+
   const initializeDashboard = async () => {
     try {
       // Initialize auth service first
@@ -87,6 +94,7 @@ export function TimesheetDashboard() {
       await Promise.all([
         loadClockStatus(),
         loadTimesheets(),
+        loadTimesheetsForSummary(),
         loadProjects()
       ]);
     } catch (error) {
@@ -122,6 +130,16 @@ export function TimesheetDashboard() {
     }
   };
 
+  const loadTimesheetsForSummary = async () => {
+    try {
+      // Always load this-month data for accurate Hours Summary calculations
+      const monthlyData = await apiService.getTimesheets({ period: 'this-month' });
+      setSummaryData(monthlyData);
+    } catch (error) {
+      console.error('Failed to load timesheets for summary:', error);
+    }
+  };
+
   const loadProjects = async () => {
     try {
       const projectList = await apiService.getProjects();
@@ -143,6 +161,8 @@ export function TimesheetDashboard() {
     try {
       await apiService.clockIn();
       await loadClockStatus();
+      // Force load data that includes today for accurate Hours Summary
+      await loadTimesheetsForSummary();
       await loadTimesheets();
     } catch (error) {
       console.error('Clock in failed:', error);
@@ -158,6 +178,8 @@ export function TimesheetDashboard() {
     try {
       await apiService.clockOut();
       await loadClockStatus();
+      // Force load data that includes today for accurate Hours Summary
+      await loadTimesheetsForSummary();
       await loadTimesheets();
     } catch (error) {
       console.error('Clock out failed:', error);
@@ -626,9 +648,9 @@ export function TimesheetDashboard() {
                 <div className="text-center">
                   <div className="text-4xl font-bold text-green-400 mb-1">
                     {(() => {
-                      if (!timesheetData?.timesheets) return '0.0';
+                      if (!summaryData?.timesheets) return '0.0';
                       const today = new Date().toISOString().split('T')[0];
-                      const todayEntry = timesheetData.timesheets.find(day => day.date === today);
+                      const todayEntry = summaryData.timesheets.find(day => day.date === today);
                       return (todayEntry?.totalHours || 0).toFixed(1);
                     })()}
                   </div>
@@ -638,9 +660,9 @@ export function TimesheetDashboard() {
                 <div className="text-center">
                   <div className="text-4xl font-bold text-blue-400 mb-1">
                     {(() => {
-                      if (!timesheetData?.timesheets) return '0.0';
+                      if (!summaryData?.timesheets) return '0.0';
                       const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                      const weekTotal = timesheetData.timesheets
+                      const weekTotal = summaryData.timesheets
                         .filter(day => day.date >= weekAgo)
                         .reduce((sum, day) => sum + day.totalHours, 0);
                       return weekTotal.toFixed(1);
@@ -651,7 +673,7 @@ export function TimesheetDashboard() {
                 
                 <div className="text-center">
                   <div className="text-4xl font-bold text-purple-400 mb-1">
-                    {timesheetData?.totalHours?.toFixed(1) || '0.0'}
+                    {summaryData?.totalHours?.toFixed(1) || '0.0'}
                   </div>
                   <div className="text-white/80 text-sm">Hours This Month</div>
                 </div>
