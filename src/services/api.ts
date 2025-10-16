@@ -142,18 +142,24 @@ class ApiService {
   }
 
   async updateTimesheet(entry: any): Promise<{ success: boolean }> {
+    console.log('UpdateTimesheet called with entry:', entry);
+    
     // Calculate hours from clock in/out times
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
     const clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
     const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
     
+    const payload = {
+      entryId: entry._id || entry.timestamp, // Use MongoDB _id if available, fallback to timestamp
+      hours: Math.round(hours * 100) / 100,
+      project_id: entry.project || 'default'
+    };
+    
+    console.log('Sending PUT request with payload:', payload);
+    
     const response = await this.request<any>('/api/timesheets', {
       method: 'PUT',
-      body: JSON.stringify({
-        entryId: entry._id || entry.timestamp, // Use MongoDB _id if available, fallback to timestamp
-        hours: Math.round(hours * 100) / 100,
-        project_id: entry.project || 'default'
-      })
+      body: JSON.stringify(payload)
     });
     
     return { success: response.success };

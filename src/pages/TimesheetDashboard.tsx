@@ -220,6 +220,14 @@ export function TimesheetDashboard() {
 
     try {
       if (editingEntry) {
+        console.log('Editing entry:', editingEntry);
+        
+        // Check if we have a valid _id
+        if (!editingEntry._id) {
+          setError('Cannot edit entry: Missing database ID. Please refresh the page and try again.');
+          return;
+        }
+        
         // Update existing entry
         await apiService.updateTimesheet({
           _id: editingEntry._id,
