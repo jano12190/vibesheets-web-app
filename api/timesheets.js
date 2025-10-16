@@ -104,8 +104,8 @@ export default async function handler(req, res) {
     } else if (req.method === 'PUT') {
       // Update timesheet entry
       console.log('PUT request body:', req.body);
-      const { entryId, hours, description, project_id } = req.body;
-      console.log('Extracted values:', { entryId, hours, description, project_id });
+      const { entryId, hours, description, project_id, clock_in_time, clock_out_time } = req.body;
+      console.log('Extracted values:', { entryId, hours, description, project_id, clock_in_time, clock_out_time });
 
       if (!entryId || hours === undefined) {
         console.log('Missing required fields:', { entryId: !!entryId, hours: hours !== undefined });
@@ -122,6 +122,8 @@ export default async function handler(req, res) {
 
       if (description !== undefined) updateData.description = description;
       if (project_id !== undefined) updateData.project_id = project_id;
+      if (clock_in_time !== undefined) updateData.clock_in_time = new Date(clock_in_time);
+      if (clock_out_time !== undefined) updateData.clock_out_time = new Date(clock_out_time);
 
       // Validate ObjectId format
       if (!ObjectId.isValid(entryId)) {

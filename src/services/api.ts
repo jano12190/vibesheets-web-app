@@ -153,7 +153,9 @@ class ApiService {
     const payload = {
       entryId: entry._id || entry.timestamp, // Use MongoDB _id if available, fallback to timestamp
       hours: Math.round(hours * 100) / 100,
-      project_id: entry.project || 'default'
+      project_id: entry.project || 'default',
+      clock_in_time: clockInDateTime.toISOString(),
+      clock_out_time: clockOutDateTime.toISOString()
     };
     
     console.log('Sending PUT request with payload:', payload);
