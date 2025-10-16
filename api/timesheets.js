@@ -72,6 +72,7 @@ export default async function handler(req, res) {
         
         // Transform entry to match frontend expectations
         const transformedEntry = {
+          _id: entry._id.toString(), // Include MongoDB _id for editing
           user_id: entry.user_id,
           timestamp: entry.clock_in_time || entry.created_at,
           date: displayDate, // Use the corrected display date

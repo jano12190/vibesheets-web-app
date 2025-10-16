@@ -222,6 +222,7 @@ export function TimesheetDashboard() {
       if (editingEntry) {
         // Update existing entry
         await apiService.updateTimesheet({
+          _id: editingEntry._id,
           timestamp: editingEntry.timestamp,
           date: editEntry.date,
           clockIn: editEntry.clockIn,
@@ -244,7 +245,7 @@ export function TimesheetDashboard() {
       setError('Time entry updated successfully');
     } catch (error) {
       console.error('Save entry error:', error);
-      setError('Failed to update time entry');
+      setError(`Failed to update time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -757,6 +758,7 @@ export function TimesheetDashboard() {
                           </div>
                           <button 
                             onClick={() => handleEditEntry({
+                              _id: entry._id,
                               timestamp: entry.timestamp,
                               clockOutTime: entry.clockOutTime,
                               type: 'session',

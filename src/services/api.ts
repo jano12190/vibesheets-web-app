@@ -150,7 +150,7 @@ class ApiService {
     const response = await this.request<any>('/api/timesheets', {
       method: 'PUT',
       body: JSON.stringify({
-        entryId: entry.timestamp, // This should be the MongoDB _id in real implementation
+        entryId: entry._id || entry.timestamp, // Use MongoDB _id if available, fallback to timestamp
         hours: Math.round(hours * 100) / 100,
         project_id: entry.project || 'default'
       })
