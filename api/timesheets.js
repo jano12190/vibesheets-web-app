@@ -1,5 +1,6 @@
 const { connectToDatabase, COLLECTIONS } = require('./_utils/database');
 const { authenticateUser, setCorsHeaders } = require('./_utils/auth');
+const { ObjectId } = require('mongodb');
 
 export default async function handler(req, res) {
   setCorsHeaders(res);
@@ -102,9 +103,12 @@ export default async function handler(req, res) {
 
     } else if (req.method === 'PUT') {
       // Update timesheet entry
+      console.log('PUT request body:', req.body);
       const { entryId, hours, description, project_id } = req.body;
+      console.log('Extracted values:', { entryId, hours, description, project_id });
 
       if (!entryId || hours === undefined) {
+        console.log('Missing required fields:', { entryId: !!entryId, hours: hours !== undefined });
         return res.status(400).json({
           success: false,
           error: 'Entry ID and hours are required'
@@ -119,9 +123,17 @@ export default async function handler(req, res) {
       if (description !== undefined) updateData.description = description;
       if (project_id !== undefined) updateData.project_id = project_id;
 
+      // Validate ObjectId format
+      if (!ObjectId.isValid(entryId)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid entry ID format'
+        });
+      }
+
       const result = await db.collection(COLLECTIONS.TIME_ENTRIES).updateOne(
         { 
-          _id: require('mongodb').ObjectId(entryId),
+          _id: new ObjectId(entryId),
           user_id: user.userId 
         },
         { $set: updateData }
@@ -150,8 +162,16 @@ export default async function handler(req, res) {
         });
       }
 
+      // Validate ObjectId format
+      if (!ObjectId.isValid(entryId)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid entry ID format'
+        });
+      }
+
       const result = await db.collection(COLLECTIONS.TIME_ENTRIES).deleteOne({
-        _id: require('mongodb').ObjectId(entryId),
+        _id: new ObjectId(entryId),
         user_id: user.userId
       });
 
