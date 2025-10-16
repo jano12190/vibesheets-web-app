@@ -147,7 +147,13 @@ class ApiService {
     
     // Calculate hours from clock in/out times
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
-    const clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    let clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    
+    // Handle overnight entries - if clock out is before clock in, it's the next day
+    if (clockOutDateTime <= clockInDateTime) {
+      clockOutDateTime = new Date(clockOutDateTime.getTime() + (24 * 60 * 60 * 1000)); // Add 24 hours
+    }
+    
     const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
     
     const payload = {
@@ -168,10 +174,10 @@ class ApiService {
     return { success: response.success };
   }
 
-  async deleteTimesheet(timestamp: string): Promise<{ success: boolean }> {
+  async deleteTimesheet(entryId: string): Promise<{ success: boolean }> {
     const response = await this.request<any>('/api/timesheets', {
       method: 'DELETE',
-      body: JSON.stringify({ timestamp })
+      body: JSON.stringify({ entryId })
     });
     
     return { success: response.success };
@@ -211,7 +217,13 @@ class ApiService {
   async createManualEntry(entry: { date: string; clockIn: string; clockOut: string; project: string }): Promise<{ success: boolean }> {
     // Calculate hours from clock in/out times
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
-    const clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    let clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
+    
+    // Handle overnight entries - if clock out is before clock in, it's the next day
+    if (clockOutDateTime <= clockInDateTime) {
+      clockOutDateTime = new Date(clockOutDateTime.getTime() + (24 * 60 * 60 * 1000)); // Add 24 hours
+    }
+    
     const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
     
     const response = await this.request<any>('/api/manual-entry', {
