@@ -37,7 +37,7 @@ export function ProjectsPage() {
       setProjects([
         {
           id: '1',
-          name: 'VibeSheets Development',
+          name: 'Vibesheets Development',
           description: 'Building the timesheet application',
           createdAt: '2024-01-15',
           totalHours: 45.5,
@@ -115,7 +115,7 @@ export function ProjectsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">VibeSheets - Projects</h1>
+              <h1 className="text-2xl font-bold text-white">Vibesheets - Projects</h1>
               <p className="text-white/80">Manage your project timesheets</p>
             </div>
             <div className="flex items-center gap-4">

@@ -10,7 +10,6 @@ export function TimesheetDashboard() {
   const [timesheetData, setTimesheetData] = useState<TimesheetData | null>(null);
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedProject, setSelectedProject] = useState('default');
   const [showEditEntry, setShowEditEntry] = useState(false);
@@ -92,7 +91,7 @@ export function TimesheetDashboard() {
       ]);
     } catch (error) {
       console.error('Dashboard initialization failed:', error);
-      setError('Failed to load dashboard');
+      alert('Failed to load dashboard');
     } finally {
       setLoading(false);
     }
@@ -140,7 +139,6 @@ export function TimesheetDashboard() {
 
   const handleClockIn = async () => {
     setClockLoading(true);
-    setError(null);
     
     try {
       await apiService.clockIn();
@@ -148,7 +146,7 @@ export function TimesheetDashboard() {
       await loadTimesheets();
     } catch (error) {
       console.error('Clock in failed:', error);
-      setError(error instanceof Error ? error.message : 'Clock in failed');
+      alert(error instanceof Error ? error.message : 'Clock in failed');
     } finally {
       setClockLoading(false);
     }
@@ -156,7 +154,6 @@ export function TimesheetDashboard() {
 
   const handleClockOut = async () => {
     setClockLoading(true);
-    setError(null);
     
     try {
       await apiService.clockOut();
@@ -164,7 +161,7 @@ export function TimesheetDashboard() {
       await loadTimesheets();
     } catch (error) {
       console.error('Clock out failed:', error);
-      setError(error instanceof Error ? error.message : 'Clock out failed');
+      alert(error instanceof Error ? error.message : 'Clock out failed');
     } finally {
       setClockLoading(false);
     }
@@ -193,7 +190,7 @@ export function TimesheetDashboard() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      setError(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
   
@@ -212,7 +209,7 @@ export function TimesheetDashboard() {
 
   const handleDeleteEntry = async (entry: any) => {
     if (!entry._id) {
-      setError('Cannot delete entry: Missing database ID');
+      alert('Cannot delete entry: Missing database ID');
       return;
     }
 
@@ -220,13 +217,12 @@ export function TimesheetDashboard() {
     if (!confirmDelete) return;
 
     try {
-      setError(null);
-      await apiService.deleteTimesheet(entry._id);
+        await apiService.deleteTimesheet(entry._id);
       await loadTimesheets();
-      setError('Time entry deleted successfully');
+      alert('Time entry deleted successfully');
     } catch (error) {
       console.error('Delete entry error:', error);
-      setError(`Failed to delete time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to delete time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -234,7 +230,7 @@ export function TimesheetDashboard() {
     e.preventDefault();
     
     if (!editEntry.clockIn || !editEntry.clockOut) {
-      setError('Please provide both clock in and clock out times');
+      alert('Please provide both clock in and clock out times');
       return;
     }
 
@@ -254,7 +250,7 @@ export function TimesheetDashboard() {
         
         // Check if we have a valid _id
         if (!editingEntry._id) {
-          setError('Cannot edit entry: Missing database ID. Please refresh the page and try again.');
+          alert('Cannot edit entry: Missing database ID. Please refresh the page and try again.');
           return;
         }
         
@@ -280,17 +276,16 @@ export function TimesheetDashboard() {
       setShowEditEntry(false);
       setEditingEntry(null);
       await loadTimesheets();
-      setError('Time entry updated successfully');
+      alert('Time entry updated successfully');
     } catch (error) {
       console.error('Save entry error:', error);
-      setError(`Failed to update time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to update time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
   const handleExportCSV = async () => {
     try {
-      setError(null);
-      console.log('Starting CSV export...');
+        console.log('Starting CSV export...');
       
       const exportParams = period === 'custom' 
         ? { 
@@ -318,10 +313,10 @@ export function TimesheetDashboard() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      setError('CSV export completed successfully');
+      alert('CSV export completed successfully');
     } catch (error) {
       console.error('CSV export failed:', error);
-      setError(`Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      alert(`Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
@@ -329,7 +324,7 @@ export function TimesheetDashboard() {
     e.preventDefault();
     
     if (!invoiceData.clientName || !invoiceData.hourlyRate) {
-      setError('Please fill in all required invoice fields');
+      alert('Please fill in all required invoice fields');
       return;
     }
 
@@ -402,7 +397,7 @@ export function TimesheetDashboard() {
           
           <div class="footer">
             <p>Thank you for your business!</p>
-            <p>Generated by VibeSheets - Professional Time Tracking</p>
+            <p>Generated by Vibesheets - Professional Time Tracking</p>
           </div>
         </body>
         </html>
@@ -435,9 +430,9 @@ export function TimesheetDashboard() {
       }
       
       setShowInvoiceModal(false);
-      setError('Invoice PDF ready - use browser print dialog to save as PDF');
+      alert('Invoice PDF ready - use browser print dialog to save as PDF');
     } catch (error) {
-      setError('Failed to generate invoice');
+      alert('Failed to generate invoice');
     }
   };
 
@@ -447,12 +442,12 @@ export function TimesheetDashboard() {
       // End break
       setIsOnBreak(false);
       setBreakStartTime(null);
-      setError('Break ended. You can continue working.');
+      alert('Break ended. You can continue working.');
     } else {
       // Start break
       setIsOnBreak(true);
       setBreakStartTime(new Date());
-      setError('Break started. Time tracking is paused.');
+      alert('Break started. Time tracking is paused.');
     }
   };
 
@@ -461,7 +456,7 @@ export function TimesheetDashboard() {
     e.preventDefault();
     
     if (!manualEntry.startTime || !manualEntry.endTime) {
-      setError('Please provide both start and end times');
+      alert('Please provide both start and end times');
       return;
     }
 
@@ -469,7 +464,7 @@ export function TimesheetDashboard() {
     const endDateTime = new Date(`${manualEntry.date}T${manualEntry.endTime}`);
     
     if (endDateTime <= startDateTime) {
-      setError('End time must be after start time');
+      alert('End time must be after start time');
       return;
     }
 
@@ -486,9 +481,9 @@ export function TimesheetDashboard() {
         project: 'default'
       });
       await loadTimesheets();
-      setError(`Manual entry added: ${hours.toFixed(2)} hours`);
+      alert(`Manual entry added: ${hours.toFixed(2)} hours`);
     } catch (error) {
-      setError('Failed to add manual entry');
+      alert('Failed to add manual entry');
     }
   };
 
@@ -510,7 +505,7 @@ export function TimesheetDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
-              <h1 className="text-2xl font-bold text-white">VibeSheets</h1>
+              <h1 className="text-2xl font-bold text-white">Vibesheets</h1>
               <p className="text-white/80">Welcome back, {user?.name || user?.email}</p>
             </div>
             <div className="flex items-center gap-4">
@@ -529,11 +524,6 @@ export function TimesheetDashboard() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {error && (
-          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-6">
-            {error}
-          </div>
-        )}
 
         {/* Project Selection */}
         <div className="mb-8">
@@ -635,21 +625,33 @@ export function TimesheetDashboard() {
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="text-center">
                   <div className="text-4xl font-bold text-green-400 mb-1">
-                    {timesheetData?.totalHours.toFixed(1) || '0.0'}
+                    {(() => {
+                      if (!timesheetData?.timesheets) return '0.0';
+                      const today = new Date().toISOString().split('T')[0];
+                      const todayEntry = timesheetData.timesheets.find(day => day.date === today);
+                      return (todayEntry?.totalHours || 0).toFixed(1);
+                    })()}
                   </div>
                   <div className="text-white/80 text-sm">Hours Today</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-4xl font-bold text-blue-400 mb-1">
-                    {(timesheetData?.totalHours || 0 * 5).toFixed(1)}
+                    {(() => {
+                      if (!timesheetData?.timesheets) return '0.0';
+                      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                      const weekTotal = timesheetData.timesheets
+                        .filter(day => day.date >= weekAgo)
+                        .reduce((sum, day) => sum + day.totalHours, 0);
+                      return weekTotal.toFixed(1);
+                    })()}
                   </div>
                   <div className="text-white/80 text-sm">Hours This Week</div>
                 </div>
                 
                 <div className="text-center">
                   <div className="text-4xl font-bold text-purple-400 mb-1">
-                    {(timesheetData?.totalHours || 0 * 30).toFixed(1)}
+                    {timesheetData?.totalHours?.toFixed(1) || '0.0'}
                   </div>
                   <div className="text-white/80 text-sm">Hours This Month</div>
                 </div>
