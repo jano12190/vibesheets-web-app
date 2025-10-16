@@ -17,6 +17,7 @@ export interface ClockStatus {
 }
 
 export interface TimeEntry {
+  _id?: string;
   user_id: string;
   timestamp: string;
   date: string;
