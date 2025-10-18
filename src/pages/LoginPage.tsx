@@ -106,13 +106,8 @@ export function LoginPage() {
             {isLoading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-white/20"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-3 bg-white/10 text-white/60">Or</span>
-            </div>
+          <div className="text-center">
+            <span className="text-white/60 text-sm">OR</span>
           </div>
 
           <button
