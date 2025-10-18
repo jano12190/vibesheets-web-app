@@ -19,12 +19,45 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       // Get timesheets with optional date filtering
-      const { startDate, endDate, projectId } = req.query;
+      const { startDate, endDate, period, projectId } = req.query;
 
       let query = { user_id: user.userId };
 
-      // Add date filtering if provided
-      if (startDate || endDate) {
+      // Handle period-based filtering
+      if (period && !startDate && !endDate) {
+        const now = new Date();
+        let calculatedStartDate, calculatedEndDate;
+
+        switch (period) {
+          case 'today': {
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            calculatedStartDate = localDate;
+            calculatedEndDate = localDate;
+            break;
+          }
+          case 'this-week': {
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            calculatedStartDate = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, '0')}-${String(weekAgo.getDate()).padStart(2, '0')}`;
+            calculatedEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            break;
+          }
+          case 'this-month': {
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            calculatedStartDate = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-${String(startOfMonth.getDate()).padStart(2, '0')}`;
+            calculatedEndDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+            break;
+          }
+        }
+
+        if (calculatedStartDate && calculatedEndDate) {
+          query.date = {};
+          query.date.$gte = calculatedStartDate;
+          query.date.$lte = calculatedEndDate;
+        }
+      }
+      // Add explicit date filtering if provided (overrides period)
+      else if (startDate || endDate) {
         query.date = {};
         if (startDate) query.date.$gte = startDate;
         if (endDate) query.date.$lte = endDate;
