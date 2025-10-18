@@ -606,7 +606,7 @@ export function TimesheetDashboard() {
                     {clockStatus.isClockedIn ? 'Clocked In' : 'Clocked Out'}
                   </div>
                   
-                  {clockStatus.isClockedIn && clockStatus.currentSessionHours && (
+                  {clockStatus.isClockedIn && clockStatus.currentSessionHours && clockStatus.currentSessionHours > 0 && (
                     <div className="mt-2 text-white/80 text-sm">
                       Session: {clockStatus.currentSessionHours.toFixed(2)} hours
                     </div>
@@ -814,9 +814,11 @@ export function TimesheetDashboard() {
                             <span className="text-red-400">
                               {entry.clockOutTime ? format(new Date(entry.clockOutTime), 'h:mm a') : 'N/A'}
                             </span>
-                            <span className="text-xs text-white/60">
-                              ({entry.hours?.toFixed(1) || '0.0'} hours)
-                            </span>
+                            {(entry.hours && entry.hours > 0) && (
+                              <span className="text-xs text-white/60">
+                                ({entry.hours.toFixed(1)} hours)
+                              </span>
+                            )}
                           </div>
                           <div className="flex gap-1">
                             <button 
