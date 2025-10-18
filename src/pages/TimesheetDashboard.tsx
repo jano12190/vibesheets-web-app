@@ -133,8 +133,21 @@ export function TimesheetDashboard() {
   const loadTimesheetsForSummary = async () => {
     try {
       console.log('loadTimesheetsForSummary: Starting to load monthly data...');
-      // Always load this-month data for accurate Hours Summary calculations
-      const monthlyData = await apiService.getTimesheets({ period: 'this-month' });
+      // Calculate this month's date range
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      
+      const startDate = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-${String(startOfMonth.getDate()).padStart(2, '0')}`;
+      const endDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+      
+      console.log('loadTimesheetsForSummary: Date range:', startDate, 'to', endDate);
+      // Load this-month data with actual date range for accurate Hours Summary calculations
+      const monthlyData = await apiService.getTimesheets({ 
+        period: 'custom',
+        startDate,
+        endDate
+      });
       console.log('loadTimesheetsForSummary: Received data:', monthlyData);
       setSummaryData(monthlyData);
       console.log('loadTimesheetsForSummary: Summary data updated');
