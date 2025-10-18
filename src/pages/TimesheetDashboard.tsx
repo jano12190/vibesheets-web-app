@@ -606,11 +606,6 @@ export function TimesheetDashboard() {
                     {clockStatus.isClockedIn ? 'Clocked In' : 'Clocked Out'}
                   </div>
                   
-                  {clockStatus.isClockedIn && clockStatus.currentSessionHours && clockStatus.currentSessionHours > 0 && (
-                    <div className="mt-2 text-white/80 text-sm">
-                      Session: {clockStatus.currentSessionHours.toFixed(2)} hours
-                    </div>
-                  )}
                 </div>
               )}
 
