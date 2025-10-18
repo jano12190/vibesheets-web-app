@@ -644,7 +644,9 @@ export function TimesheetDashboard() {
                   <div className="text-4xl font-bold text-green-400 mb-1">
                     {(() => {
                       if (!summaryData?.timesheets) return '0.0';
-                      const today = new Date().toISOString().split('T')[0];
+                      // Get local date (not UTC) to match backend date handling
+                      const now = new Date();
+                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
                       const todayEntry = summaryData.timesheets.find(day => day.date === today);
                       return (todayEntry?.totalHours || 0).toFixed(1);
                     })()}
@@ -656,7 +658,9 @@ export function TimesheetDashboard() {
                   <div className="text-4xl font-bold text-blue-400 mb-1">
                     {(() => {
                       if (!summaryData?.timesheets) return '0.0';
-                      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                      // Get local date for week ago calculation
+                      const weekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+                      const weekAgo = `${weekAgoDate.getFullYear()}-${String(weekAgoDate.getMonth() + 1).padStart(2, '0')}-${String(weekAgoDate.getDate()).padStart(2, '0')}`;
                       const weekTotal = summaryData.timesheets
                         .filter(day => day.date >= weekAgo)
                         .reduce((sum, day) => sum + day.totalHours, 0);
