@@ -81,8 +81,8 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800">
       <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md mx-4 border border-white/20">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">VibeSheets</h1>
-          <p className="text-white/80">Professional Timesheet Management</p>
+          <h1 className="text-4xl font-bold text-white mb-2">vibesheets</h1>
+          <p className="text-white/80">Time Tracking and Invoices</p>
         </div>
 
         {error && (
@@ -111,7 +111,7 @@ export function LoginPage() {
               <div className="w-full border-t border-white/20"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-transparent text-white/60">Or</span>
+              <span className="px-3 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800 text-white/60">Or</span>
             </div>
           </div>
 
