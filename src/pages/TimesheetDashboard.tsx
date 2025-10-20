@@ -132,12 +132,9 @@ export function TimesheetDashboard() {
 
   const loadTimesheetsForSummary = async () => {
     try {
-      console.log('loadTimesheetsForSummary: Starting to load monthly data...');
       // Always load this-month data for accurate Hours Summary calculations
       const monthlyData = await apiService.getTimesheets({ period: 'this-month' });
-      console.log('loadTimesheetsForSummary: Received data:', monthlyData);
       setSummaryData(monthlyData);
-      console.log('loadTimesheetsForSummary: Summary data updated');
     } catch (error) {
       console.error('Failed to load timesheets for summary:', error);
     }
@@ -179,16 +176,11 @@ export function TimesheetDashboard() {
     setClockLoading(true);
     
     try {
-      console.log('handleClockOut: Starting clock out process...');
       await apiService.clockOut();
-      console.log('handleClockOut: Clock out API call completed');
       await loadClockStatus();
-      console.log('handleClockOut: Clock status reloaded');
       // Force load data that includes today for accurate Hours Summary
       await loadTimesheetsForSummary();
-      console.log('handleClockOut: Summary data reloaded');
       await loadTimesheets();
-      console.log('handleClockOut: All data reloaded');
     } catch (error) {
       console.error('Clock out failed:', error);
       alert(error instanceof Error ? error.message : 'Clock out failed');
@@ -651,17 +643,11 @@ export function TimesheetDashboard() {
                 <div className="text-center">
                   <div className="text-4xl font-bold text-green-400 mb-1">
                     {(() => {
-                      if (!summaryData?.timesheets) {
-                        console.log('Hours Today: No summaryData.timesheets');
-                        return '0.0';
-                      }
+                      if (!summaryData?.timesheets) return '0.0';
                       // Get local date (not UTC) to match backend date handling
                       const now = new Date();
                       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                      console.log('Hours Today: Looking for date:', today);
-                      console.log('Hours Today: Available dates:', summaryData.timesheets.map(t => t.date));
                       const todayEntry = summaryData.timesheets.find(day => day.date === today);
-                      console.log('Hours Today: Found entry:', todayEntry);
                       return (todayEntry?.totalHours || 0).toFixed(1);
                     })()}
                   </div>
