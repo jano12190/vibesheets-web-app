@@ -106,7 +106,9 @@
       "Bash(npx vercel:*)",
       "Bash(vercel logs:*)",
       "Bash(vercel:*)",
-      "Bash(WORKDIR=\"/mnt/c/Users/ja_no/OneDrive/Desktop/VibeSheets\")"
+      "Bash(WORKDIR=\"/mnt/c/Users/ja_no/OneDrive/Desktop/VibeSheets\")",
+      "Bash(env)",
+      "WebFetch(domain:vibesheets.vercel.app)"
     ],
     "deny": []
   }
