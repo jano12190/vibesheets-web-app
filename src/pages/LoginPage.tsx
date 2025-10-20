@@ -7,7 +7,7 @@ export function LoginPage() {
   const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
-    const initAuth = async () => {
+    (async () => {
       try {
         await authService.initialize();
         setAuthInitialized(true);
@@ -24,9 +24,7 @@ export function LoginPage() {
         setError('Failed to initialize authentication');
         setAuthInitialized(true); // Allow user to retry login
       }
-    };
-
-    initAuth();
+    })();
   }, []);
 
 
