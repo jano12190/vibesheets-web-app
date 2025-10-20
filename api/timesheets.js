@@ -79,22 +79,8 @@ export default async function handler(req, res) {
       let totalHours = 0;
 
       timeEntries.forEach(entry => {
-        // Calculate the correct date from clock_in_time for timezone correction
-        // This fixes entries that were created with UTC dates instead of local dates
+        // Use the date field directly since it's now properly set by the frontend
         let displayDate = entry.date;
-        if (entry.clock_in_time) {
-          const clockInDate = new Date(entry.clock_in_time);
-          // For US timezones, if the clock-in time is late in the day (evening),
-          // it likely belongs to the next day in local time
-          const hour = clockInDate.getUTCHours();
-          if (hour >= 18) { // 6 PM UTC or later, likely next day in US timezones
-            const nextDay = new Date(clockInDate);
-            nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-            displayDate = nextDay.toISOString().split('T')[0];
-          } else {
-            displayDate = clockInDate.toISOString().split('T')[0];
-          }
-        }
         
         if (!entriesByDate[displayDate]) {
           entriesByDate[displayDate] = {
