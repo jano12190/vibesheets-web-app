@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
     // Use provided local date or fallback to UTC date
     const dateString = localDate || now.toISOString().split('T')[0];
-    console.log('Current time:', now, 'Using date:', dateString);
+    console.log('Clock API - Current time:', now, 'Using date:', dateString, 'Local date param:', localDate);
 
     // Validate action
     if (!['clock_in', 'clock_out'].includes(action)) {
@@ -128,8 +128,10 @@ export default async function handler(req, res) {
         updated_at: now
       };
 
+      console.log('Clock API - Creating time entry with date:', dateString, 'Entry:', timeEntry);
       // Insert time entry
-      await db.collection(COLLECTIONS.TIME_ENTRIES).insertOne(timeEntry);
+      const insertResult = await db.collection(COLLECTIONS.TIME_ENTRIES).insertOne(timeEntry);
+      console.log('Clock API - Time entry inserted with ID:', insertResult.insertedId);
 
       // Update session to clocked out
       await db.collection(COLLECTIONS.USER_SESSIONS).updateOne(
