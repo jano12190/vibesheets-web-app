@@ -81,9 +81,7 @@ export function TimesheetDashboard() {
       await authService.initialize();
       
       const isAuthenticated = await authService.isAuthenticated();
-      console.log('Dashboard auth check:', isAuthenticated);
       if (!isAuthenticated) {
-        console.log('Not authenticated, redirecting to login');
         window.location.href = '/';
         return;
       }
@@ -224,7 +222,7 @@ export function TimesheetDashboard() {
       date: entry.date,
       clockIn: format(new Date(entry.clockInTime || entry.timestamp), 'HH:mm'),
       clockOut: entry.clockOutTime ? format(new Date(entry.clockOutTime), 'HH:mm') : '',
-      project: selectedProject
+      project: entry.project_id || 'default'
     });
     setShowEditEntry(true);
   };
@@ -268,7 +266,6 @@ export function TimesheetDashboard() {
 
     try {
       if (editingEntry) {
-        console.log('Editing entry:', editingEntry);
         
         // Check if we have a valid _id
         if (!editingEntry._id) {
@@ -307,7 +304,6 @@ export function TimesheetDashboard() {
 
   const handleExportCSV = async () => {
     try {
-        console.log('Starting CSV export...');
       
       const exportParams = period === 'custom' 
         ? { 
@@ -319,7 +315,6 @@ export function TimesheetDashboard() {
         : { format: 'csv' as const, period };
       const exportData = await apiService.exportTimesheet(exportParams);
 
-      console.log('Export data received:', exportData);
 
       // Create and download CSV
       const blob = new Blob([exportData.content], { type: 'text/csv;charset=utf-8;' });
@@ -494,7 +489,6 @@ export function TimesheetDashboard() {
     
     try {
       // Add manual entry (mock implementation)
-      console.log('Adding manual entry:', { ...manualEntry, hours });
       setShowManualEntry(false);
       setManualEntry({
         date: new Date().toISOString().split('T')[0],
@@ -644,10 +638,11 @@ export function TimesheetDashboard() {
                   <div className="text-4xl font-bold text-green-400 mb-1">
                     {(() => {
                       if (!summaryData?.timesheets) return '0.0';
-                      // Get local date (not UTC) to match backend date handling
+                      // Get today in user's timezone
                       const now = new Date();
-                      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-                      const todayEntry = summaryData.timesheets.find(day => day.date === today);
+                      const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                      const todayInUserTZ = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(now);
+                      const todayEntry = summaryData.timesheets.find(day => day.date === todayInUserTZ);
                       return (todayEntry?.totalHours || 0).toFixed(1);
                     })()}
                   </div>
@@ -658,9 +653,10 @@ export function TimesheetDashboard() {
                   <div className="text-4xl font-bold text-blue-400 mb-1">
                     {(() => {
                       if (!summaryData?.timesheets) return '0.0';
-                      // Get local date for week ago calculation
+                      // Get week ago date in user's timezone
+                      const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
                       const weekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-                      const weekAgo = `${weekAgoDate.getFullYear()}-${String(weekAgoDate.getMonth() + 1).padStart(2, '0')}-${String(weekAgoDate.getDate()).padStart(2, '0')}`;
+                      const weekAgo = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(weekAgoDate);
                       const weekTotal = summaryData.timesheets
                         .filter(day => day.date >= weekAgo)
                         .reduce((sum, day) => sum + day.totalHours, 0);
@@ -1092,7 +1088,6 @@ export function TimesheetDashboard() {
               <form onSubmit={(e) => {
                 e.preventDefault();
                 // Handle project creation here
-                console.log('Creating project:', newProject);
                 setNewProject({ name: '', client: '' });
                 setShowCreateProject(false);
               }} className="space-y-4">

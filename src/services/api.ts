@@ -46,8 +46,6 @@ class ApiService {
   private async request<T>(endpoint: string, options?: RequestInit): Promise<T> {
     try {
       const token = await authService.getAccessToken();
-      console.log('API request token length:', token ? token.length : 'null');
-      console.log('API request endpoint:', endpoint);
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers: {
@@ -143,7 +141,6 @@ class ApiService {
   }
 
   async updateTimesheet(entry: any): Promise<{ success: boolean }> {
-    console.log('UpdateTimesheet called with entry:', entry);
     
     // Calculate hours from clock in/out times
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
@@ -164,7 +161,6 @@ class ApiService {
       clock_out_time: clockOutDateTime.toISOString()
     };
     
-    console.log('Sending PUT request with payload:', payload);
     
     const response = await this.request<any>('/api/timesheets', {
       method: 'PUT',
