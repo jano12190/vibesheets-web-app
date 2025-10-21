@@ -121,7 +121,9 @@ export function TimesheetDashboard() {
             endDate: customDateRange.endDate
           }
         : { period };
+      console.log('Loading timesheets with params:', params);
       const data = await apiService.getTimesheets(params);
+      console.log('Received timesheet data:', { period: params.period, totalHours: data.totalHours, entriesCount: data.timesheets?.length });
       setTimesheetData(data);
     } catch (error) {
       console.error('Failed to load timesheets:', error);
@@ -728,7 +730,6 @@ export function TimesheetDashboard() {
                       setShowCustomDateRange(true);
                     } else {
                       setShowCustomDateRange(false);
-                      loadTimesheets();
                     }
                   }}
                   className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
