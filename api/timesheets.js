@@ -38,9 +38,25 @@ export default async function handler(req, res) {
             break;
           }
           case 'this-week': {
-            const weekAgo = new Date(mdtTime.getTime() - 7 * 24 * 60 * 60 * 1000);
-            calculatedStartDate = `${weekAgo.getFullYear()}-${String(weekAgo.getMonth() + 1).padStart(2, '0')}-${String(weekAgo.getDate()).padStart(2, '0')}`;
+            // Get start of this week (Sunday) in user's timezone
+            const currentDay = mdtTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const daysSinceSunday = currentDay;
+            const sundayDate = new Date(mdtTime.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
+            
+            calculatedStartDate = `${sundayDate.getFullYear()}-${String(sundayDate.getMonth() + 1).padStart(2, '0')}-${String(sundayDate.getDate()).padStart(2, '0')}`;
             calculatedEndDate = `${mdtTime.getFullYear()}-${String(mdtTime.getMonth() + 1).padStart(2, '0')}-${String(mdtTime.getDate()).padStart(2, '0')}`;
+            break;
+          }
+          case 'last-week': {
+            // Get last week (previous Sunday to Saturday)
+            const currentDay = mdtTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const daysSinceSunday = currentDay;
+            const thisWeekSunday = new Date(mdtTime.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
+            const lastWeekSunday = new Date(thisWeekSunday.getTime() - (7 * 24 * 60 * 60 * 1000));
+            const lastWeekSaturday = new Date(thisWeekSunday.getTime() - (24 * 60 * 60 * 1000));
+            
+            calculatedStartDate = `${lastWeekSunday.getFullYear()}-${String(lastWeekSunday.getMonth() + 1).padStart(2, '0')}-${String(lastWeekSunday.getDate()).padStart(2, '0')}`;
+            calculatedEndDate = `${lastWeekSaturday.getFullYear()}-${String(lastWeekSaturday.getMonth() + 1).padStart(2, '0')}-${String(lastWeekSaturday.getDate()).padStart(2, '0')}`;
             break;
           }
           case 'this-month': {

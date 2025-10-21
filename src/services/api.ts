@@ -119,7 +119,7 @@ class ApiService {
   }
 
   async getTimesheets(params?: {
-    period?: 'today' | 'this-week' | 'this-month' | 'custom';
+    period?: 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom';
     startDate?: string;
     endDate?: string;
   }): Promise<TimesheetData> {
@@ -181,7 +181,7 @@ class ApiService {
 
   async exportTimesheet(params: {
     format: 'csv' | 'json';
-    period?: 'today' | 'this-week' | 'this-month' | 'custom';
+    period?: 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom';
     startDate?: string;
     endDate?: string;
   }): Promise<{ content: string; filename: string }> {

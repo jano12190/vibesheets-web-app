@@ -47,7 +47,7 @@ export function TimesheetDashboard() {
     endTime: '',
     project: 'default'
   });
-  const [period, setPeriod] = useState<'today' | 'this-week' | 'this-month' | 'custom'>('today');
+  const [period, setPeriod] = useState<'today' | 'this-week' | 'last-week' | 'this-month' | 'custom'>('today');
   const [customDateRange, setCustomDateRange] = useState(() => {
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -653,12 +653,22 @@ export function TimesheetDashboard() {
                   <div className="text-4xl font-bold text-blue-400 mb-1">
                     {(() => {
                       if (!summaryData?.timesheets) return '0.0';
-                      // Get week ago date in user's timezone
+                      // Get start of this week (Sunday) in user's timezone
                       const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                      const weekAgoDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-                      const weekAgo = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(weekAgoDate);
+                      const now = new Date();
+                      
+                      // Get current day of week (0 = Sunday, 1 = Monday, etc.)
+                      const currentDay = now.getDay();
+                      
+                      // Calculate days since Sunday
+                      const daysSinceSunday = currentDay;
+                      
+                      // Get Sunday date
+                      const sundayDate = new Date(now.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
+                      const thisWeekStart = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(sundayDate);
+                      
                       const weekTotal = summaryData.timesheets
-                        .filter(day => day.date >= weekAgo)
+                        .filter(day => day.date >= thisWeekStart)
                         .reduce((sum, day) => sum + day.totalHours, 0);
                       return weekTotal.toFixed(1);
                     })()}
@@ -712,7 +722,7 @@ export function TimesheetDashboard() {
                 <select 
                   value={period}
                   onChange={(e) => {
-                    const newPeriod = e.target.value as 'today' | 'this-week' | 'this-month' | 'custom';
+                    const newPeriod = e.target.value as 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom';
                     setPeriod(newPeriod);
                     if (newPeriod === 'custom') {
                       setShowCustomDateRange(true);
@@ -725,6 +735,7 @@ export function TimesheetDashboard() {
                 >
                   <option value="today" className="bg-gray-800 text-white">Today</option>
                   <option value="this-week" className="bg-gray-800 text-white">This Week</option>
+                  <option value="last-week" className="bg-gray-800 text-white">Last Week</option>
                   <option value="this-month" className="bg-gray-800 text-white">This Month</option>
                   <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
                 </select>
