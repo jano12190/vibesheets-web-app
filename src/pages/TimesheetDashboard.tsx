@@ -83,7 +83,7 @@ export function TimesheetDashboard() {
     if (period === 'custom') {
       // Only reload if both dates are set
       if (customDateRange.startDate && customDateRange.endDate) {
-        console.log('Auto-loading custom range:', customDateRange);
+        console.log('Auto-loading custom range:', JSON.stringify(customDateRange, null, 2));
         loadTimesheets();
       }
     }
@@ -135,9 +135,16 @@ export function TimesheetDashboard() {
             endDate: customDateRange.endDate
           }
         : { period };
-      console.log('Loading timesheets with params:', params);
+      console.log('Loading timesheets with params:', JSON.stringify(params, null, 2));
       const data = await apiService.getTimesheets(params);
-      console.log('Received timesheet data:', { period: params.period, totalHours: data.totalHours, entriesCount: data.timesheets?.length });
+      console.log('Received timesheet data:', { 
+        period: params.period, 
+        startDate: params.startDate, 
+        endDate: params.endDate,
+        totalHours: data.totalHours, 
+        entriesCount: data.timesheets?.length,
+        firstEntryDate: data.timesheets?.[0]?.date
+      });
       setTimesheetData(data);
     } catch (error) {
       console.error('Failed to load timesheets:', error);
@@ -789,7 +796,7 @@ export function TimesheetDashboard() {
                 <div className="flex gap-2 mt-6">
                   <button
                     onClick={() => {
-                      console.log('Apply custom date range:', customDateRange);
+                      console.log('Apply custom date range:', JSON.stringify(customDateRange, null, 2));
                       // Force a reload to ensure fresh data
                       loadTimesheets();
                     }}
