@@ -79,6 +79,7 @@ export default async function handler(req, res) {
         query.date = {};
         if (startDate) query.date.$gte = startDate;
         if (endDate) query.date.$lte = endDate;
+        console.log('Custom date range query:', { startDate, endDate, query: query.date });
       }
 
       // Add project filtering if provided
@@ -86,11 +87,18 @@ export default async function handler(req, res) {
         query.project_id = projectId;
       }
 
+      console.log('Final query being executed:', JSON.stringify(query, null, 2));
+      
       const timeEntries = await db.collection(COLLECTIONS.TIME_ENTRIES)
         .find(query)
         .sort({ date: -1, created_at: -1 })
         .limit(100)
         .toArray();
+        
+      console.log('Found time entries:', timeEntries.length);
+      if (timeEntries.length > 0) {
+        console.log('Sample entry dates:', timeEntries.slice(0, 3).map(e => ({ date: e.date, timestamp: e.created_at })));
+      }
 
       // Group entries by date and calculate totals
       const entriesByDate = {};

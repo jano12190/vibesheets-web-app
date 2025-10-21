@@ -69,11 +69,25 @@ export function TimesheetDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Reload timesheets when period or custom date range changes
+  // Reload timesheets when period changes (but not for custom date range changes)
   useEffect(() => {
     if (loading) return; // Don't reload during initial load
-    loadTimesheets();
-  }, [period, customDateRange]);
+    if (period !== 'custom') {
+      loadTimesheets();
+    }
+  }, [period]);
+
+  // Separate effect for custom date range changes (only when custom period is active)
+  useEffect(() => {
+    if (loading) return; // Don't reload during initial load
+    if (period === 'custom') {
+      // Only reload if both dates are set
+      if (customDateRange.startDate && customDateRange.endDate) {
+        console.log('Auto-loading custom range:', customDateRange);
+        loadTimesheets();
+      }
+    }
+  }, [customDateRange, period]);
 
   const initializeDashboard = async () => {
     try {
@@ -774,7 +788,11 @@ export function TimesheetDashboard() {
                 </div>
                 <div className="flex gap-2 mt-6">
                   <button
-                    onClick={() => loadTimesheets()}
+                    onClick={() => {
+                      console.log('Apply custom date range:', customDateRange);
+                      // Force a reload to ensure fresh data
+                      loadTimesheets();
+                    }}
                     className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
                   >
                     Apply
@@ -783,7 +801,7 @@ export function TimesheetDashboard() {
                     onClick={() => {
                       setShowCustomDateRange(false);
                       setPeriod('today');
-                      loadTimesheets();
+                      // useEffect will handle the loadTimesheets call when period changes
                     }}
                     className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
                   >
