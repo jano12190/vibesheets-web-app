@@ -14,7 +14,7 @@ export function TimesheetDashboard() {
   const [loading, setLoading] = useState(true);
   const [clockLoading, setClockLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedProject, setSelectedProject] = useState('default');
+  const [selectedProject, setSelectedProject] = useState('');
   const [showEditEntry, setShowEditEntry] = useState(false);
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
@@ -23,7 +23,7 @@ export function TimesheetDashboard() {
     date: new Date().toISOString().split('T')[0],
     clockIn: '',
     clockOut: '',
-    project: 'default'
+    project: ''
   });
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
@@ -31,7 +31,9 @@ export function TimesheetDashboard() {
     hourlyRate: '',
     startDate: '',
     endDate: '',
-    invoiceNumber: `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
+    invoiceNumber: '', // Will be generated when invoice is actually created
+    businessName: '',
+    businessAddress: ''
   });
   const [invoiceHours, setInvoiceHours] = useState(0);
   const [showCSVExportModal, setShowCSVExportModal] = useState(false);
@@ -44,9 +46,7 @@ export function TimesheetDashboard() {
     name: '',
     client: ''
   });
-  const [projects, setProjects] = useState<Array<{id: string, name: string, client?: string}>>([
-    { id: 'default', name: 'General Work', client: 'Default' }
-  ]);
+  const [projects, setProjects] = useState<Array<{id: string, name: string, client?: string}>>([]);
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [, setBreakStartTime] = useState<Date | null>(null);
   const [, setShowManualEntry] = useState(false);
@@ -54,7 +54,7 @@ export function TimesheetDashboard() {
     date: new Date().toISOString().split('T')[0],
     startTime: '',
     endTime: '',
-    project: 'default'
+    project: ''
   });
   const [period, setPeriod] = useState<'today' | 'this-week' | 'last-week' | 'this-month' | 'custom'>('today');
   const [customDateRange, setCustomDateRange] = useState(() => {
@@ -78,13 +78,13 @@ export function TimesheetDashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // Reload timesheets when period changes (but not for custom date range changes)
+  // Reload timesheets when period or project changes (but not for custom date range changes)
   useEffect(() => {
     if (loading) return; // Don't reload during initial load
     if (period !== 'custom') {
       loadTimesheets();
     }
-  }, [period]);
+  }, [period, selectedProject]);
 
   // Separate effect for custom date range changes (only when custom period is active)
   useEffect(() => {
@@ -96,7 +96,7 @@ export function TimesheetDashboard() {
         loadTimesheets();
       }
     }
-  }, [customDateRange, period]);
+  }, [customDateRange, period, selectedProject]);
 
   // Update invoice hours when invoice date range changes
   useEffect(() => {
@@ -166,15 +166,20 @@ export function TimesheetDashboard() {
         ? { 
             period: 'custom' as const,
             startDate: customDateRange.startDate,
-            endDate: customDateRange.endDate
+            endDate: customDateRange.endDate,
+            projectId: selectedProject || undefined
           }
-        : { period };
+        : { 
+            period,
+            projectId: selectedProject || undefined
+          };
       console.log('Loading timesheets with params:', JSON.stringify(params, null, 2));
       const data = await apiService.getTimesheets(params);
       console.log('Received timesheet data:', { 
         period: params.period, 
         startDate: params.startDate, 
         endDate: params.endDate,
+        projectId: params.projectId,
         totalHours: data.totalHours, 
         entriesCount: data.timesheets?.length,
         firstEntryDate: data.timesheets?.[0]?.date
@@ -198,19 +203,23 @@ export function TimesheetDashboard() {
   const loadProjects = async () => {
     try {
       const projectList = await apiService.getProjects();
-      // Ensure default project is always available
-      const hasDefault = projectList.some(p => p.id === 'default');
-      if (!hasDefault) {
-        projectList.unshift({ id: 'default', name: 'General Work', client: 'Default' });
-      }
       setProjects(projectList);
+      // Set first project as selected if none selected and projects exist
+      if (!selectedProject && projectList.length > 0) {
+        setSelectedProject(projectList[0].id);
+      }
     } catch (error) {
       console.error('Failed to load projects:', error);
-      // Keep default project if API fails
     }
   };
 
   const handleClockIn = async () => {
+    // Require project selection before clocking in
+    if (!selectedProject) {
+      alert('Please select a project before clocking in. Create a project if you don\'t have one.');
+      return;
+    }
+    
     setClockLoading(true);
     
     try {
@@ -279,7 +288,7 @@ export function TimesheetDashboard() {
       date: entry.date,
       clockIn: format(new Date(entry.clockInTime || entry.timestamp), 'HH:mm'),
       clockOut: entry.clockOutTime ? format(new Date(entry.clockOutTime), 'HH:mm') : '',
-      project: entry.project_id || 'default'
+      project: entry.project_id || ''
     });
     setShowEditEntry(true);
   };
@@ -407,12 +416,16 @@ export function TimesheetDashboard() {
   const generateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!invoiceData.clientName || !invoiceData.hourlyRate) {
-      alert('Please fill in all required invoice fields');
+    if (!invoiceData.businessName || !invoiceData.businessAddress || !invoiceData.clientName || !invoiceData.hourlyRate) {
+      alert('Please fill in all required fields (business name, address, client name, and hourly rate)');
       return;
     }
 
     try {
+      // Generate invoice number only when actually creating invoice
+      const finalInvoiceNumber = invoiceData.invoiceNumber || 
+        `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+      
       // Use the pre-calculated invoice hours
       const totalHours = invoiceHours;
       const totalAmount = (totalHours * parseFloat(invoiceData.hourlyRate)).toFixed(2);
@@ -443,19 +456,21 @@ export function TimesheetDashboard() {
         <body>
           <div class="header">
             <h1 class="invoice-title">INVOICE</h1>
-            <p>Professional Time Tracking Services</p>
+            <p><strong>${invoiceData.businessName || 'Professional Services'}</strong></p>
+            ${invoiceData.businessAddress ? `<p style="font-size: 12px; margin-top: 5px;">${invoiceData.businessAddress}</p>` : ''}
           </div>
           
           <div class="invoice-info">
             <div class="client-info">
               <h3>Bill To:</h3>
               <p><strong>${invoiceData.clientName}</strong></p>
-              <p>${invoiceData.clientEmail}</p>
+              ${invoiceData.clientEmail ? `<p>${invoiceData.clientEmail}</p>` : ''}
             </div>
             <div class="invoice-details">
               <h3>Invoice Details:</h3>
-              <p><strong>Invoice #:</strong> ${invoiceData.invoiceNumber}</p>
+              <p><strong>Invoice #:</strong> ${finalInvoiceNumber}</p>
               <p><strong>Date:</strong> ${format(new Date(), 'MMM dd, yyyy')}</p>
+              <p><strong>Due:</strong> ${format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM dd, yyyy')}</p>
               <p><strong>Period:</strong> ${invoiceData.startDate} to ${invoiceData.endDate}</p>
             </div>
           </div>
@@ -484,8 +499,9 @@ export function TimesheetDashboard() {
           </div>
           
           <div class="footer">
+            <p><strong>Payment Terms:</strong> Net 30 days</p>
+            <p><strong>Note:</strong> This invoice represents professional time tracking services provided during the specified period.</p>
             <p>Thank you for your business!</p>
-            <p>Generated by Vibesheets - Professional Time Tracking</p>
           </div>
         </body>
         </html>
@@ -538,8 +554,11 @@ export function TimesheetDashboard() {
           heightLeft -= (pageHeight - (margin * 2));
         }
         
+        // Update state with generated invoice number for display
+        setInvoiceData(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
+        
         // Download the PDF
-        pdf.save(`invoice-${invoiceData.invoiceNumber}.pdf`);
+        pdf.save(`invoice-${finalInvoiceNumber}.pdf`);
         
       } catch (error) {
         console.error('PDF generation failed:', error);
@@ -597,7 +616,7 @@ export function TimesheetDashboard() {
         date: new Date().toISOString().split('T')[0],
         startTime: '',
         endTime: '',
-        project: 'default'
+        project: ''
       });
       await loadTimesheets();
       alert(`Manual entry added: ${hours.toFixed(2)} hours`);
@@ -655,12 +674,24 @@ export function TimesheetDashboard() {
                 value={selectedProject}
                 onChange={(e) => setSelectedProject(e.target.value)}
                 className="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 h-10"
+                disabled={projects.length === 0}
               >
-                {projects.map(project => (
-                  <option key={project.id} value={project.id} className="bg-gray-800 text-white">
-                    {project.name}
+                {projects.length === 0 ? (
+                  <option value="" className="bg-gray-800 text-white">
+                    No projects - Create one first
                   </option>
-                ))}
+                ) : (
+                  <>
+                    <option value="" className="bg-gray-800 text-white">
+                      Select a project
+                    </option>
+                    {projects.map(project => (
+                      <option key={project.id} value={project.id} className="bg-gray-800 text-white">
+                        {project.name} {project.client ? `(${project.client})` : ''}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
             <button 
@@ -1091,6 +1122,35 @@ export function TimesheetDashboard() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-white/80 text-sm font-medium mb-2">
+                      Your Business Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceData.businessName}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, businessName: e.target.value })}
+                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                      placeholder="Your Business Name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">
+                      Business Address *
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceData.businessAddress}
+                      onChange={(e) => setInvoiceData({ ...invoiceData, businessAddress: e.target.value })}
+                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                      placeholder="123 Main St, City, State ZIP"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-white/80 text-sm font-medium mb-2">
                       Client Name *
                     </label>
                     <input
@@ -1098,7 +1158,7 @@ export function TimesheetDashboard() {
                       value={invoiceData.clientName}
                       onChange={(e) => setInvoiceData({ ...invoiceData, clientName: e.target.value })}
                       className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="Acme Corp"
+                      placeholder="Client Company"
                       required
                     />
                   </div>
@@ -1111,7 +1171,7 @@ export function TimesheetDashboard() {
                       value={invoiceData.clientEmail}
                       onChange={(e) => setInvoiceData({ ...invoiceData, clientEmail: e.target.value })}
                       className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="billing@acme.com"
+                      placeholder="client@email.com"
                     />
                   </div>
                 </div>
@@ -1237,11 +1297,37 @@ export function TimesheetDashboard() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
               <h3 className="text-xl font-semibold text-white mb-6">Create New Project</h3>
-              <form onSubmit={(e) => {
+              <form onSubmit={async (e) => {
                 e.preventDefault();
-                // Handle project creation here
-                setNewProject({ name: '', client: '' });
-                setShowCreateProject(false);
+                if (!newProject.name.trim()) {
+                  alert('Please enter a project name');
+                  return;
+                }
+                
+                try {
+                  console.log('Creating project:', newProject);
+                  await apiService.createProject({
+                    name: newProject.name,
+                    client: newProject.client || 'No Client'
+                  });
+                  
+                  // Reload projects and set the new one as selected
+                  await loadProjects();
+                  
+                  // Find and select the newly created project
+                  const updatedProjects = await apiService.getProjects();
+                  const newProjectInList = updatedProjects.find(p => p.name === newProject.name);
+                  if (newProjectInList) {
+                    setSelectedProject(newProjectInList.id);
+                  }
+                  
+                  setNewProject({ name: '', client: '' });
+                  setShowCreateProject(false);
+                  alert('Project created successfully!');
+                } catch (error) {
+                  console.error('Failed to create project:', error);
+                  alert('Failed to create project. Please try again.');
+                }
               }} className="space-y-4">
                 <div>
                   <label className="block text-white/80 text-sm font-medium mb-2">
@@ -1252,22 +1338,22 @@ export function TimesheetDashboard() {
                     value={newProject.name}
                     onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
                     className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white placeholder-white/60"
-                    placeholder="Enter project name"
+                    placeholder="My Project"
                     required
+                    autoFocus
                   />
                 </div>
                 
                 <div>
                   <label className="block text-white/80 text-sm font-medium mb-2">
-                    Client Name *
+                    Client Name (Optional)
                   </label>
                   <input
                     type="text"
                     value={newProject.client}
                     onChange={(e) => setNewProject({ ...newProject, client: e.target.value })}
                     className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white placeholder-white/60"
-                    placeholder="Enter client name"
-                    required
+                    placeholder="Client Company"
                   />
                 </div>
                 

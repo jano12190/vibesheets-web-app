@@ -122,6 +122,7 @@ class ApiService {
     period?: 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom';
     startDate?: string;
     endDate?: string;
+    projectId?: string;
   }): Promise<TimesheetData> {
     const queryParams = new URLSearchParams();
     
@@ -133,6 +134,9 @@ class ApiService {
     }
     if (params?.endDate) {
       queryParams.append('endDate', params.endDate);
+    }
+    if (params?.projectId) {
+      queryParams.append('projectId', params.projectId);
     }
 
     const endpoint = `/api/timesheets${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
