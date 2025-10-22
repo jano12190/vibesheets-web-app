@@ -781,7 +781,11 @@ export function TimesheetDashboard() {
               {/* Export Options */}
               <div className="mt-8 flex gap-3">
                 <button 
-                  onClick={() => setShowInvoiceModal(true)}
+                  onClick={() => {
+                    setShowInvoiceModal(true);
+                    // Initialize with current timesheet data
+                    setInvoiceHours(timesheetData?.totalHours || 0);
+                  }}
                   className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
                 >
                   Download Invoice (PDF)
@@ -1138,7 +1142,10 @@ export function TimesheetDashboard() {
                     <input
                       type="date"
                       value={invoiceData.startDate}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, startDate: e.target.value })}
+                      onChange={(e) => {
+                        console.log('Start date changed to:', e.target.value);
+                        setInvoiceData({ ...invoiceData, startDate: e.target.value });
+                      }}
                       className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
                     />
                   </div>
@@ -1149,7 +1156,10 @@ export function TimesheetDashboard() {
                     <input
                       type="date"
                       value={invoiceData.endDate}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, endDate: e.target.value })}
+                      onChange={(e) => {
+                        console.log('End date changed to:', e.target.value);
+                        setInvoiceData({ ...invoiceData, endDate: e.target.value });
+                      }}
                       className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
                     />
                   </div>
@@ -1158,7 +1168,32 @@ export function TimesheetDashboard() {
                 <div className="bg-white/5 rounded-lg p-4">
                   <div className="flex justify-between items-center text-white">
                     <span>Total Hours:</span>
-                    <span className="font-semibold">{invoiceHours.toFixed(2)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{invoiceHours.toFixed(2)}</span>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          console.log('Manual refresh clicked');
+                          if (invoiceData.startDate && invoiceData.endDate) {
+                            try {
+                              const data = await apiService.getTimesheets({
+                                period: 'custom',
+                                startDate: invoiceData.startDate,
+                                endDate: invoiceData.endDate
+                              });
+                              console.log('Manual refresh data:', data?.totalHours);
+                              setInvoiceHours(data?.totalHours || 0);
+                            } catch (error) {
+                              console.error('Manual refresh failed:', error);
+                            }
+                          }
+                        }}
+                        className="text-blue-400 hover:text-blue-300 text-sm"
+                        title="Refresh hours"
+                      >
+                        🔄
+                      </button>
+                    </div>
                   </div>
                   <div className="flex justify-between items-center text-white mt-2">
                     <span>Total Amount:</span>
