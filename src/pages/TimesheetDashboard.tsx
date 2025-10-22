@@ -3,6 +3,8 @@ import { User } from '@auth0/auth0-spa-js';
 import { authService } from '../services/auth';
 import { apiService, ClockStatus, TimesheetData } from '../services/api';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export function TimesheetDashboard() {
   const [user, setUser] = useState<User | null>(null);
@@ -30,6 +32,13 @@ export function TimesheetDashboard() {
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0],
     invoiceNumber: `INV-${Date.now()}`
+  });
+  const [invoiceHours, setInvoiceHours] = useState(0);
+  const [showCSVExportModal, setShowCSVExportModal] = useState(false);
+  const [csvExportData, setCSVExportData] = useState({
+    period: 'this-month' as 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0]
   });
   const [newProject, setNewProject] = useState({
     name: '',
@@ -88,6 +97,31 @@ export function TimesheetDashboard() {
       }
     }
   }, [customDateRange, period]);
+
+  // Update invoice hours when invoice date range changes
+  useEffect(() => {
+    const updateInvoiceHours = async () => {
+      if (showInvoiceModal && invoiceData.startDate && invoiceData.endDate) {
+        try {
+          console.log('Updating invoice hours for period:', invoiceData.startDate, 'to', invoiceData.endDate);
+          const data = await apiService.getTimesheets({
+            period: 'custom',
+            startDate: invoiceData.startDate,
+            endDate: invoiceData.endDate
+          });
+          console.log('Invoice hours data received:', data?.totalHours);
+          setInvoiceHours(data?.totalHours || 0);
+        } catch (error) {
+          console.error('Failed to load invoice hours:', error);
+          setInvoiceHours(0);
+        }
+      } else {
+        console.log('Invoice hours update skipped:', { showInvoiceModal, startDate: invoiceData.startDate, endDate: invoiceData.endDate });
+      }
+    };
+    
+    updateInvoiceHours();
+  }, [invoiceData.startDate, invoiceData.endDate, showInvoiceModal]);
 
   const initializeDashboard = async () => {
     try {
@@ -325,22 +359,31 @@ export function TimesheetDashboard() {
     }
   };
 
-  const handleExportCSV = async () => {
+  const handleExportCSV = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
-      
-      const exportParams = period === 'custom' 
+      const exportParams = csvExportData.period === 'custom' 
         ? { 
             format: 'csv' as const, 
             period: 'custom' as const,
-            startDate: customDateRange.startDate,
-            endDate: customDateRange.endDate
+            startDate: csvExportData.startDate,
+            endDate: csvExportData.endDate
           }
-        : { format: 'csv' as const, period };
+        : { format: 'csv' as const, period: csvExportData.period };
+        
+      console.log('Exporting CSV with params:', exportParams);
       const exportData = await apiService.exportTimesheet(exportParams);
-
+      
+      // Get total hours for the period
+      const timesheetData = await apiService.getTimesheets(exportParams);
+      const totalHours = timesheetData?.totalHours || 0;
+      
+      // Add total hours to CSV content
+      const csvWithTotal = exportData.content + `\n\nTotal Hours,${totalHours.toFixed(2)}`;
 
       // Create and download CSV
-      const blob = new Blob([exportData.content], { type: 'text/csv;charset=utf-8;' });
+      const blob = new Blob([csvWithTotal], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
       
@@ -353,7 +396,8 @@ export function TimesheetDashboard() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
       
-      alert('CSV export completed successfully');
+      setShowCSVExportModal(false);
+      alert('CSV export completed successfully with total hours included!');
     } catch (error) {
       console.error('CSV export failed:', error);
       alert(`Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -369,15 +413,8 @@ export function TimesheetDashboard() {
     }
 
     try {
-      // Get hours for the specific invoice period
-      console.log('Fetching invoice data for period:', invoiceData.startDate, 'to', invoiceData.endDate);
-      const invoiceTimesheetData = await apiService.getTimesheets({
-        period: 'custom',
-        startDate: invoiceData.startDate,
-        endDate: invoiceData.endDate
-      });
-      
-      const totalHours = invoiceTimesheetData?.totalHours || 0;
+      // Use the pre-calculated invoice hours
+      const totalHours = invoiceHours;
       const totalAmount = (totalHours * parseFloat(invoiceData.hourlyRate)).toFixed(2);
       
       console.log('Invoice calculations:', { totalHours, hourlyRate: invoiceData.hourlyRate, totalAmount });
@@ -452,20 +489,59 @@ export function TimesheetDashboard() {
         </html>
       `;
 
-      // Download invoice as HTML file (can be opened and printed/saved as PDF)
-      const blob = new Blob([invoiceHTML], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `invoice-${invoiceData.invoiceNumber}.html`;
-      a.style.visibility = 'hidden';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Create a temporary div to render HTML for PDF conversion
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = invoiceHTML;
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '800px';
+      tempDiv.style.backgroundColor = 'white';
+      document.body.appendChild(tempDiv);
+      
+      try {
+        // Convert HTML to canvas
+        const canvas = await html2canvas(tempDiv, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        // Create PDF from canvas
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        
+        const imgWidth = 210; // A4 width in mm
+        const pageHeight = 295; // A4 height in mm
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        let heightLeft = imgHeight;
+        
+        let position = 0;
+        
+        // Add first page
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+        
+        // Add additional pages if needed
+        while (heightLeft >= 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        // Download the PDF
+        pdf.save(`invoice-${invoiceData.invoiceNumber}.pdf`);
+        
+      } catch (error) {
+        console.error('PDF generation failed:', error);
+        alert('PDF generation failed. Please try again.');
+      } finally {
+        // Clean up
+        document.body.removeChild(tempDiv);
+      }
       
       setShowInvoiceModal(false);
-      alert('Invoice downloaded successfully! Open the HTML file and use your browser\'s "Print to PDF" option to save as PDF.');
+      alert('Invoice PDF generated and downloaded successfully!');
     } catch (error) {
       alert('Failed to generate invoice');
     }
@@ -708,13 +784,13 @@ export function TimesheetDashboard() {
                   onClick={() => setShowInvoiceModal(true)}
                   className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
                 >
-                  Generate Invoice (PDF)
+                  Download Invoice (PDF)
                 </button>
                 <button 
-                  onClick={() => handleExportCSV()}
+                  onClick={() => setShowCSVExportModal(true)}
                   className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
                 >
-                  Export Hours (CSV)
+                  Download Hours (CSV)
                 </button>
               </div>
             </div>
@@ -1082,12 +1158,12 @@ export function TimesheetDashboard() {
                 <div className="bg-white/5 rounded-lg p-4">
                   <div className="flex justify-between items-center text-white">
                     <span>Total Hours:</span>
-                    <span className="font-semibold">{timesheetData?.totalHours.toFixed(2) || '0.00'}</span>
+                    <span className="font-semibold">{invoiceHours.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center text-white mt-2">
                     <span>Total Amount:</span>
                     <span className="font-semibold text-green-400">
-                      ${((timesheetData?.totalHours || 0) * parseFloat(invoiceData.hourlyRate || '0')).toFixed(2)}
+                      ${(invoiceHours * parseFloat(invoiceData.hourlyRate || '0')).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -1097,7 +1173,7 @@ export function TimesheetDashboard() {
                     type="submit"
                     className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
                   >
-                    Generate & Download Invoice
+                    Download Invoice
                   </button>
                   <button
                     type="button"
@@ -1164,6 +1240,78 @@ export function TimesheetDashboard() {
                       setNewProject({ name: '', client: '' });
                       setShowCreateProject(false);
                     }}
+                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* CSV Export Modal */}
+        {showCSVExportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-6">Export Hours to CSV</h3>
+              <form onSubmit={handleExportCSV} className="space-y-4">
+                <div>
+                  <label className="block text-white/80 text-sm font-medium mb-2">
+                    Time Period
+                  </label>
+                  <select
+                    value={csvExportData.period}
+                    onChange={(e) => setCSVExportData({ ...csvExportData, period: e.target.value as any })}
+                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                  >
+                    <option value="today" className="bg-gray-800 text-white">Today</option>
+                    <option value="this-week" className="bg-gray-800 text-white">This Week</option>
+                    <option value="last-week" className="bg-gray-800 text-white">Last Week</option>
+                    <option value="this-month" className="bg-gray-800 text-white">This Month</option>
+                    <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
+                  </select>
+                </div>
+                
+                {csvExportData.period === 'custom' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-white/80 text-sm font-medium mb-2">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={csvExportData.startDate}
+                        onChange={(e) => setCSVExportData({ ...csvExportData, startDate: e.target.value })}
+                        className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white/80 text-sm font-medium mb-2">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={csvExportData.endDate}
+                        onChange={(e) => setCSVExportData({ ...csvExportData, endDate: e.target.value })}
+                        className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  >
+                    Download CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCSVExportModal(false)}
                     className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
                   >
                     Cancel
