@@ -369,9 +369,18 @@ export function TimesheetDashboard() {
     }
 
     try {
-      // Generate invoice HTML
-      const totalHours = timesheetData?.totalHours || 0;
+      // Get hours for the specific invoice period
+      console.log('Fetching invoice data for period:', invoiceData.startDate, 'to', invoiceData.endDate);
+      const invoiceTimesheetData = await apiService.getTimesheets({
+        period: 'custom',
+        startDate: invoiceData.startDate,
+        endDate: invoiceData.endDate
+      });
+      
+      const totalHours = invoiceTimesheetData?.totalHours || 0;
       const totalAmount = (totalHours * parseFloat(invoiceData.hourlyRate)).toFixed(2);
+      
+      console.log('Invoice calculations:', { totalHours, hourlyRate: invoiceData.hourlyRate, totalAmount });
       
       const invoiceHTML = `
         <!DOCTYPE html>
@@ -443,34 +452,20 @@ export function TimesheetDashboard() {
         </html>
       `;
 
-      // Convert HTML to PDF using browser's print functionality
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(invoiceHTML);
-        printWindow.document.close();
-        
-        // Wait for content to load then trigger print dialog
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-          }, 500);
-        };
-      } else {
-        // Fallback: create HTML file if popup is blocked
-        const blob = new Blob([invoiceHTML], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `invoice-${invoiceData.invoiceNumber}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      // Download invoice as HTML file (can be opened and printed/saved as PDF)
+      const blob = new Blob([invoiceHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoiceData.invoiceNumber}.html`;
+      a.style.visibility = 'hidden';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
       setShowInvoiceModal(false);
-      alert('Invoice PDF ready - use browser print dialog to save as PDF');
+      alert('Invoice downloaded successfully! Open the HTML file and use your browser\'s "Print to PDF" option to save as PDF.');
     } catch (error) {
       alert('Failed to generate invoice');
     }
