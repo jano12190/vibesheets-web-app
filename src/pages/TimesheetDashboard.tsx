@@ -28,10 +28,10 @@ export function TimesheetDashboard() {
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
     clientEmail: '',
-    hourlyRate: '75',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
-    invoiceNumber: `INV-${Date.now()}`
+    hourlyRate: '',
+    startDate: '',
+    endDate: '',
+    invoiceNumber: `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`
   });
   const [invoiceHours, setInvoiceHours] = useState(0);
   const [showCSVExportModal, setShowCSVExportModal] = useState(false);
@@ -425,16 +425,18 @@ export function TimesheetDashboard() {
         <head>
           <title>Invoice ${invoiceData.invoiceNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 40px; color: #333; line-height: 1.4; }
-            .header { text-align: center; margin-bottom: 40px; }
-            .invoice-title { font-size: 28px; color: #2563eb; margin-bottom: 10px; }
-            .invoice-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; line-height: 1.4; font-size: 14px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .invoice-title { font-size: 24px; color: #2563eb; margin-bottom: 8px; }
+            .invoice-info { display: flex; justify-content: space-between; margin-bottom: 25px; }
             .client-info, .invoice-details { width: 45%; }
-            .table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-            .table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            .client-info h3, .invoice-details h3 { font-size: 16px; margin-bottom: 8px; }
+            .table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; }
+            .table th, .table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd; }
             .table th { background-color: #f8f9fa; font-weight: bold; }
-            .total { text-align: right; font-size: 18px; font-weight: bold; color: #2563eb; margin-top: 20px; }
-            .footer { margin-top: 40px; text-align: center; color: #666; font-size: 14px; }
+            .total { text-align: right; font-size: 16px; font-weight: bold; color: #2563eb; margin-top: 15px; }
+            .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
+            * { box-sizing: border-box; }
             @media print { body { margin: 0; } }
           </style>
         </head>
@@ -494,39 +496,46 @@ export function TimesheetDashboard() {
       tempDiv.innerHTML = invoiceHTML;
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '800px';
+      tempDiv.style.width = '794px'; // A4 width minus margins (210mm - 16mm = 794px at 96dpi)
+      tempDiv.style.maxWidth = '794px';
       tempDiv.style.backgroundColor = 'white';
+      tempDiv.style.padding = '20px';
+      tempDiv.style.boxSizing = 'border-box';
       document.body.appendChild(tempDiv);
       
       try {
         // Convert HTML to canvas
         const canvas = await html2canvas(tempDiv, {
-          scale: 2,
+          scale: 1.5, // Reduced scale for better fit
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          width: tempDiv.scrollWidth,
+          height: tempDiv.scrollHeight
         });
         
-        // Create PDF from canvas
+        // Create PDF from canvas with proper margins
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
         
-        const imgWidth = 210; // A4 width in mm
-        const pageHeight = 295; // A4 height in mm
+        const pageWidth = 210; // A4 width in mm
+        const pageHeight = 297; // A4 height in mm
+        const margin = 10; // 10mm margins
+        const imgWidth = pageWidth - (margin * 2); // Content width
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
         let heightLeft = imgHeight;
+        let position = margin; // Start with top margin
         
-        let position = 0;
-        
-        // Add first page
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        // Add first page with margins
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - (margin * 2));
         
         // Add additional pages if needed
         while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
+          position = margin - (imgHeight - heightLeft);
           pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
+          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+          heightLeft -= (pageHeight - (margin * 2));
         }
         
         // Download the PDF
