@@ -132,6 +132,12 @@ export function TimesheetDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showArchivedProjects]);
 
+  // Reload summary when selected project changes
+  useEffect(() => {
+    loadTimesheetsForSummary();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProject]);
+
   const handleArchiveProject = async (projectId: string, archive: boolean) => {
     try {
       await apiService.updateProject(projectId, { archived: archive });
@@ -232,7 +238,11 @@ export function TimesheetDashboard() {
   const loadTimesheetsForSummary = async () => {
     try {
       // Always load this-month data for accurate Hours Summary calculations
-      const monthlyData = await apiService.getTimesheets({ period: 'this-month' });
+      const params: any = { period: 'this-month' };
+      if (selectedProject) {
+        params.projectId = selectedProject;
+      }
+      const monthlyData = await apiService.getTimesheets(params);
       setSummaryData(monthlyData);
     } catch (error) {
       console.error('Failed to load timesheets for summary:', error);
@@ -760,7 +770,7 @@ export function TimesheetDashboard() {
               {!showArchivedProjects ? (
                 <button
                   onClick={() => handleArchiveProject(selectedProject, true)}
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
+                  className="bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
                 >
                   Archive Project
                 </button>
