@@ -72,7 +72,7 @@ class ApiService {
     }
   }
 
-  async clockIn(): Promise<ClockResponse> {
+  async clockIn(projectId: string): Promise<ClockResponse> {
     // Get user's local date (not UTC)
     const now = new Date();
     const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -81,6 +81,7 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify({ 
         action: 'clock_in',
+        project_id: projectId,
         localDate: localDate
       })
     });
@@ -200,8 +201,9 @@ class ApiService {
     };
   }
 
-  async getProjects(): Promise<{ id: string; name: string; client: string }[]> {
-    const response = await this.request<any>('/api/projects');
+  async getProjects(archived?: boolean): Promise<{ id: string; name: string; client: string; archived: boolean }[]> {
+    const url = archived !== undefined ? `/api/projects?archived=${archived}` : '/api/projects';
+    const response = await this.request<any>(url);
     return response.projects || [];
   }
 
@@ -212,6 +214,23 @@ class ApiService {
     });
     
     return { success: response.success };
+  }
+
+  async updateProject(id: string, updates: { archived?: boolean; name?: string; client?: string; hourlyRate?: number }): Promise<{ success: boolean }> {
+    const response = await this.request<any>(`/api/projects?id=${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    
+    return { success: response.success };
+  }
+
+  async deleteProject(id: string): Promise<{ success: boolean; error?: string }> {
+    const response = await this.request<any>(`/api/projects?id=${id}`, {
+      method: 'DELETE'
+    });
+    
+    return { success: response.success, error: response.error };
   }
 
   async createManualEntry(entry: { date: string; clockIn: string; clockOut: string; project: string }): Promise<{ success: boolean }> {

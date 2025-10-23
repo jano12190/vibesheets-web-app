@@ -46,7 +46,10 @@ export function TimesheetDashboard() {
     name: '',
     client: ''
   });
-  const [projects, setProjects] = useState<Array<{id: string, name: string, client?: string}>>([]);
+  const [projects, setProjects] = useState<Array<{id: string, name: string, client?: string, archived?: boolean}>>([]);
+  const [showArchivedProjects, setShowArchivedProjects] = useState(false);
+  const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [, setBreakStartTime] = useState<Date | null>(null);
   const [, setShowManualEntry] = useState(false);
@@ -122,6 +125,42 @@ export function TimesheetDashboard() {
     
     updateInvoiceHours();
   }, [invoiceData.startDate, invoiceData.endDate, showInvoiceModal]);
+
+  // Reload projects when archived filter changes
+  useEffect(() => {
+    loadProjects();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showArchivedProjects]);
+
+  const handleArchiveProject = async (projectId: string, archive: boolean) => {
+    try {
+      await apiService.updateProject(projectId, { archived: archive });
+      await loadProjects();
+      alert(`Project ${archive ? 'archived' : 'unarchived'} successfully!`);
+    } catch (error) {
+      console.error('Failed to archive/unarchive project:', error);
+      alert('Failed to update project. Please try again.');
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete) return;
+    
+    try {
+      const result = await apiService.deleteProject(projectToDelete);
+      if (result.success) {
+        await loadProjects();
+        setShowDeleteProjectModal(false);
+        setProjectToDelete(null);
+        alert('Project deleted successfully!');
+      } else {
+        alert(result.error || 'Failed to delete project');
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      alert('Failed to delete project. Please try again.');
+    }
+  };
 
   const initializeDashboard = async () => {
     try {
@@ -202,7 +241,7 @@ export function TimesheetDashboard() {
 
   const loadProjects = async () => {
     try {
-      const projectList = await apiService.getProjects();
+      const projectList = await apiService.getProjects(showArchivedProjects);
       setProjects(projectList);
       // Set first project as selected if none selected and projects exist
       if (!selectedProject && projectList.length > 0) {
@@ -223,7 +262,7 @@ export function TimesheetDashboard() {
     setClockLoading(true);
     
     try {
-      await apiService.clockIn();
+      await apiService.clockIn(selectedProject);
       await loadClockStatus();
       // Force load data that includes today for accurate Hours Summary
       await loadTimesheetsForSummary();
@@ -663,9 +702,9 @@ export function TimesheetDashboard() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Project Selection */}
+        {/* Project Management */}
         <div className="mb-8">
-          <div className="flex items-end gap-4">
+          <div className="flex items-end gap-4 mb-4">
             <div className="w-80">
               <label className="block text-white/80 text-sm font-medium mb-2">
                 Current Project
@@ -687,11 +726,24 @@ export function TimesheetDashboard() {
                     </option>
                     {projects.map(project => (
                       <option key={project.id} value={project.id} className="bg-gray-800 text-white">
-                        {project.name} {project.client ? `(${project.client})` : ''}
+                        {project.name} {project.client ? `(${project.client})` : ''} {project.archived ? '(Archived)' : ''}
                       </option>
                     ))}
                   </>
                 )}
+              </select>
+            </div>
+            <div className="w-48">
+              <label className="block text-white/80 text-sm font-medium mb-2">
+                View Projects
+              </label>
+              <select
+                value={showArchivedProjects ? 'archived' : 'active'}
+                onChange={(e) => setShowArchivedProjects(e.target.value === 'archived')}
+                className="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 h-10"
+              >
+                <option value="active" className="bg-gray-800 text-white">Active Projects</option>
+                <option value="archived" className="bg-gray-800 text-white">Archived Projects</option>
               </select>
             </div>
             <button 
@@ -701,6 +753,36 @@ export function TimesheetDashboard() {
               Create Project
             </button>
           </div>
+          
+          {/* Project Actions */}
+          {selectedProject && (
+            <div className="flex gap-2">
+              {!showArchivedProjects ? (
+                <button
+                  onClick={() => handleArchiveProject(selectedProject, true)}
+                  className="bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
+                >
+                  Archive Project
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleArchiveProject(selectedProject, false)}
+                  className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
+                >
+                  Unarchive Project
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setProjectToDelete(selectedProject);
+                  setShowDeleteProjectModal(true);
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
+              >
+                Delete Project
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Top Row: Time Clock and Hours Summary */}
@@ -1448,6 +1530,40 @@ export function TimesheetDashboard() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Project Confirmation Modal */}
+        {showDeleteProjectModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
+              <h3 className="text-xl font-semibold text-white mb-6">Delete Project</h3>
+              <p className="text-white/80 mb-6">
+                Are you sure you want to delete this project? This action cannot be undone.
+                {projectToDelete && (
+                  <span className="block mt-2 font-medium">
+                    Project: {projects.find(p => p.id === projectToDelete)?.name}
+                  </span>
+                )}
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleDeleteProject}
+                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                >
+                  Delete Project
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDeleteProjectModal(false);
+                    setProjectToDelete(null);
+                  }}
+                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         )}
