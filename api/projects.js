@@ -20,20 +20,28 @@ export default async function handler(req, res) {
         .find({ user_id: user.userId })
         .toArray();
       
+      // Map _id to id for frontend compatibility
+      const formattedProjects = projects.map(project => ({
+        ...project,
+        id: project._id.toString(),
+        _id: undefined
+      }));
+      
       return res.status(200).json({
         success: true,
-        data: projects
+        projects: formattedProjects
       });
     } 
     
     if (req.method === 'POST') {
       // Create new project
-      const { name, description, hourlyRate } = req.body;
+      const { name, client, description, hourlyRate } = req.body;
       
       const project = {
         user_id: user.userId,
         name,
-        description,
+        client: client || 'No Client',
+        description: description || '',
         hourlyRate: hourlyRate || 0,
         created_at: new Date(),
         updated_at: new Date()
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
       
       return res.status(201).json({
         success: true,
-        data: { ...project, _id: result.insertedId }
+        data: { ...project, id: result.insertedId.toString() }
       });
     }
     

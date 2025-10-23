@@ -1312,10 +1312,10 @@ export function TimesheetDashboard() {
                   });
                   
                   // Reload projects and set the new one as selected
-                  await loadProjects();
+                  const updatedProjects = await apiService.getProjects();
+                  setProjects(updatedProjects);
                   
                   // Find and select the newly created project
-                  const updatedProjects = await apiService.getProjects();
                   const newProjectInList = updatedProjects.find(p => p.name === newProject.name);
                   if (newProjectInList) {
                     setSelectedProject(newProjectInList.id);
