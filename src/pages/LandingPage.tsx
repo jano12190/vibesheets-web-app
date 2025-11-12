@@ -156,8 +156,8 @@ export function LandingPage() {
 
       {/* Login Modal */}
       {showLoginModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 w-full max-w-md p-6 shadow-2xl">
+        <div className="fixed inset-0 bg-gradient-to-br from-indigo-900/80 via-purple-900/80 to-pink-800/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 w-full max-w-md mx-4 border border-white/20">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-white mb-2">Vibesheets</h1>
               <p className="text-white/80">Time Tracking and Invoices</p>
@@ -191,7 +191,7 @@ export function LandingPage() {
               <button
                 onClick={handleAuth0Login}
                 disabled={isLoading}
-                className="w-full bg-white/10 backdrop-blur-lg text-white border border-white/30 py-3 px-6 rounded-lg font-semibold transition-all duration-300 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-white/10 backdrop-blur-sm text-white border border-white/30 py-3 px-6 rounded-lg font-semibold transition-all duration-300 hover:bg-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Signing in...' : 'Continue with Email'}
               </button>
