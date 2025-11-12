@@ -81,11 +81,6 @@ export function LandingPage() {
         <header className="container mx-auto px-6 py-6">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-white/20 backdrop-blur-lg rounded-lg flex items-center justify-center border border-white/30">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                </svg>
-              </div>
               <span className="text-white text-xl font-bold">Vibesheets</span>
             </div>
             <button
@@ -122,7 +117,7 @@ export function LandingPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
+            <div className="flex justify-center">
               <button
                 onClick={() => setShowLoginModal(true)}
                 className="group bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white px-10 py-5 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-purple-500/25 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
@@ -130,7 +125,6 @@ export function LandingPage() {
                 <span className="relative z-10">Start Tracking</span>
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
-              <p className="text-white/60 text-sm">Free • No credit card required</p>
             </div>
 
             {/* Feature showcase */}
@@ -160,25 +154,6 @@ export function LandingPage() {
                     <h3 className="text-xl font-bold text-white mb-3">Beautiful Invoices</h3>
                     <p className="text-white/70 leading-relaxed">Transform your tracked time into professional PDF invoices that clients love. Automated calculations included.</p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Social proof / testimonial */}
-            <div className="pt-16">
-              <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/20 p-8 max-w-2xl mx-auto">
-                <div className="text-center">
-                  <div className="flex justify-center mb-4">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <p className="text-white/80 text-lg italic mb-4">
-                    "Finally, time tracking that doesn't feel like work. Clean, simple, and gets out of my way."
-                  </p>
-                  <p className="text-white/60 text-sm">— Sarah Chen, Freelance Designer</p>
                 </div>
               </div>
             </div>
