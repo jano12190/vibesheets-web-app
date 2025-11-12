@@ -131,6 +131,15 @@ class ApiService {
   }): Promise<TimesheetData> {
     const queryParams = new URLSearchParams();
     
+    // Get user's timezone and current local date
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const now = new Date();
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
+    
+    // Always send timezone information
+    queryParams.append('timezone', userTimeZone);
+    queryParams.append('localDate', localDate);
+    
     if (params?.period) {
       queryParams.append('period', params.period);
     }

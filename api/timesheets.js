@@ -19,21 +19,26 @@ export default async function handler(req, res) {
 
     if (req.method === 'GET') {
       // Get timesheets with optional date filtering
-      const { startDate, endDate, period, projectId } = req.query;
+      const { startDate, endDate, period, projectId, timezone, localDate } = req.query;
 
       let query = { user_id: user.userId };
 
+      console.log('Timesheets request:', { period, timezone, localDate, startDate, endDate });
+
       // Handle period-based filtering
       if (period && !startDate && !endDate) {
-        // Use current UTC time - let frontend handle timezone conversions
-        const now = new Date();
+        // Use user's local date if provided, otherwise fall back to server time
+        const userLocalDate = localDate;
+        const now = userLocalDate ? new Date(userLocalDate + 'T00:00:00') : new Date();
         let calculatedStartDate, calculatedEndDate;
 
         switch (period) {
           case 'today': {
-            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            calculatedStartDate = localDate;
-            calculatedEndDate = localDate;
+            // Use the user's local date directly if provided
+            const todayDate = userLocalDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            calculatedStartDate = todayDate;
+            calculatedEndDate = todayDate;
+            console.log('Today filter using date:', todayDate);
             break;
           }
           case 'this-week': {
@@ -43,7 +48,8 @@ export default async function handler(req, res) {
             const sundayDate = new Date(now.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
             
             calculatedStartDate = `${sundayDate.getFullYear()}-${String(sundayDate.getMonth() + 1).padStart(2, '0')}-${String(sundayDate.getDate()).padStart(2, '0')}`;
-            calculatedEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            calculatedEndDate = userLocalDate || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            console.log('This week filter:', { start: calculatedStartDate, end: calculatedEndDate });
             break;
           }
           case 'last-week': {
@@ -63,6 +69,7 @@ export default async function handler(req, res) {
             const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             calculatedStartDate = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-${String(startOfMonth.getDate()).padStart(2, '0')}`;
             calculatedEndDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+            console.log('This month filter:', { start: calculatedStartDate, end: calculatedEndDate });
             break;
           }
         }
