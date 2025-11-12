@@ -98,56 +98,88 @@ export function LandingPage() {
         </header>
 
         {/* Hero section */}
-        <main className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center max-w-4xl mx-auto space-y-8">
-            <div className="space-y-6">
-              <h1 className="text-4xl md:text-6xl font-bold text-white leading-tight">
-                Professional Time Tracking
-              </h1>
-              <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto">
-                Track your work hours, manage projects, and generate professional invoices with ease.
-              </p>
+        <main className="flex-1 flex items-center justify-center px-6 relative">
+          {/* Floating orbs for visual appeal */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-1/4 left-1/6 w-32 h-32 bg-gradient-to-r from-purple-400/20 to-pink-400/20 rounded-full blur-xl animate-pulse"></div>
+            <div className="absolute bottom-1/4 right-1/6 w-40 h-40 bg-gradient-to-r from-indigo-400/20 to-purple-400/20 rounded-full blur-xl animate-pulse" style={{animationDelay: '1s'}}></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-gradient-to-r from-pink-400/20 to-yellow-400/20 rounded-full blur-xl animate-pulse" style={{animationDelay: '2s'}}></div>
+          </div>
+
+          <div className="text-center max-w-4xl mx-auto space-y-12 relative z-10">
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight">
+                  Time Tracking
+                  <span className="block bg-gradient-to-r from-yellow-300 via-pink-300 to-purple-300 bg-clip-text text-transparent">
+                    Made Beautiful
+                  </span>
+                </h1>
+                <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+                  The most elegant way to track hours, manage projects, and create stunning invoices. 
+                  <span className="block mt-2 text-white/70">Simple. Professional. Effortless.</span>
+                </p>
+              </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
               <button
                 onClick={() => setShowLoginModal(true)}
-                className="bg-white/10 backdrop-blur-lg text-white border border-white/30 px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white/20 transition-all duration-300"
+                className="group bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white px-10 py-5 rounded-2xl font-semibold text-lg hover:shadow-2xl hover:shadow-purple-500/25 transform hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
               >
-                Get Started
+                <span className="relative z-10">Start Tracking</span>
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
+              <p className="text-white/60 text-sm">Free • No credit card required</p>
             </div>
 
-            {/* Simple feature grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-16 max-w-3xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 text-center">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+            {/* Feature showcase */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-20 max-w-4xl mx-auto">
+              <div className="group bg-white/5 hover:bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 text-left hover:border-white/40 transition-all duration-300 hover:transform hover:-translate-y-1">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-3">Smart Time Tracking</h3>
+                    <p className="text-white/70 leading-relaxed">One-click clock in/out with intelligent project detection. Track hours effortlessly across all your projects.</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Time Tracking</h3>
-                <p className="text-white/70 text-sm">Simple clock in/out with project management</p>
               </div>
               
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 text-center">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+              <div className="group bg-white/5 hover:bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 text-left hover:border-white/40 transition-all duration-300 hover:transform hover:-translate-y-1">
+                <div className="flex items-start space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-500 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-3">Beautiful Invoices</h3>
+                    <p className="text-white/70 leading-relaxed">Transform your tracked time into professional PDF invoices that clients love. Automated calculations included.</p>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Professional Invoices</h3>
-                <p className="text-white/70 text-sm">Generate PDF invoices from your time entries</p>
               </div>
-              
-              <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 p-6 text-center">
-                <div className="w-12 h-12 bg-white/20 backdrop-blur-lg rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
+            </div>
+
+            {/* Social proof / testimonial */}
+            <div className="pt-16">
+              <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/20 p-8 max-w-2xl mx-auto">
+                <div className="text-center">
+                  <div className="flex justify-center mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                      </svg>
+                    ))}
+                  </div>
+                  <p className="text-white/80 text-lg italic mb-4">
+                    "Finally, time tracking that doesn't feel like work. Clean, simple, and gets out of my way."
+                  </p>
+                  <p className="text-white/60 text-sm">— Sarah Chen, Freelance Designer</p>
                 </div>
-                <h3 className="text-lg font-semibold text-white mb-2">Analytics</h3>
-                <p className="text-white/70 text-sm">Track your productivity with detailed reports</p>
               </div>
             </div>
           </div>
