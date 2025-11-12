@@ -427,6 +427,17 @@ export function TimesheetDashboard() {
       setShowEditEntry(false);
       setEditingEntry(null);
       
+      // Reset edit form with current local date
+      const now = new Date();
+      const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
+      setEditEntry({
+        date: localDate,
+        clockIn: '',
+        clockOut: '',
+        project: ''
+      });
+      
       // Reload both timesheet data and summary
       await Promise.all([
         loadTimesheets(),

@@ -23,7 +23,7 @@ export default async function handler(req, res) {
     // Connect to database
     const { db } = await connectToDatabase();
     
-    const { date, clock_in_time, clock_out_time, hours, project_id, type } = req.body;
+    const { date, localDate, clock_in_time, clock_out_time, hours, project_id, type, timezone } = req.body;
     
     // Validate required fields
     if (!date || !clock_in_time || !clock_out_time || hours === undefined) {
@@ -33,15 +33,26 @@ export default async function handler(req, res) {
       });
     }
 
+    // Use localDate if provided (this preserves user's intended date)
+    const entryDate = localDate || date;
+    
+    console.log('Creating manual entry with:', {
+      originalDate: date,
+      localDate: localDate,
+      entryDate: entryDate,
+      timezone: timezone
+    });
+
     // Create manual time entry
     const timeEntry = {
       user_id: user.userId,
       project_id: project_id || 'default',
-      date: date, // Use the date as provided (should be local date)
+      date: entryDate, // Use the local date to preserve user intent
       clock_in_time: new Date(clock_in_time),
       clock_out_time: new Date(clock_out_time),
       hours: parseFloat(hours),
       type: type || 'manual',
+      timezone: timezone,
       created_at: new Date(),
       updated_at: new Date()
     };

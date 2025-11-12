@@ -243,7 +243,10 @@ class ApiService {
   }
 
   async createManualEntry(entry: { date: string; clockIn: string; clockOut: string; project: string }): Promise<{ success: boolean }> {
-    // Calculate hours from clock in/out times
+    // Calculate hours from clock in/out times using user's timezone
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Create date objects without timezone conversion issues
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
     let clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
     
@@ -254,15 +257,18 @@ class ApiService {
     
     const hours = (clockOutDateTime.getTime() - clockInDateTime.getTime()) / (1000 * 60 * 60);
     
+    // Send the date in local format to preserve user's intended date
     const response = await this.request<any>('/api/manual-entry', {
       method: 'POST',
       body: JSON.stringify({
-        date: entry.date,
+        date: entry.date, // Keep the local date as-is
         clock_in_time: clockInDateTime.toISOString(),
         clock_out_time: clockOutDateTime.toISOString(),
         hours: Math.round(hours * 100) / 100,
         project_id: entry.project || 'default',
-        type: 'manual'
+        type: 'manual',
+        timezone: userTimeZone,
+        localDate: entry.date // Explicitly send local date
       })
     });
     
