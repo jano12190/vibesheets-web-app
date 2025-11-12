@@ -19,11 +19,16 @@ export function TimesheetDashboard() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [editingEntry, setEditingEntry] = useState<any>(null);
-  const [editEntry, setEditEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
-    clockIn: '',
-    clockOut: '',
-    project: ''
+  const [editEntry, setEditEntry] = useState(() => {
+    const now = new Date();
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
+    return {
+      date: localDate,
+      clockIn: '',
+      clockOut: '',
+      project: ''
+    };
   });
   const [invoiceData, setInvoiceData] = useState({
     clientName: '',
@@ -53,16 +58,22 @@ export function TimesheetDashboard() {
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [, setBreakStartTime] = useState<Date | null>(null);
   const [, setShowManualEntry] = useState(false);
-  const [manualEntry, setManualEntry] = useState({
-    date: new Date().toISOString().split('T')[0],
-    startTime: '',
-    endTime: '',
-    project: ''
+  const [manualEntry, setManualEntry] = useState(() => {
+    const now = new Date();
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
+    return {
+      date: localDate,
+      startTime: '',
+      endTime: '',
+      project: ''
+    };
   });
   const [period, setPeriod] = useState<'today' | 'this-week' | 'last-week' | 'this-month' | 'custom'>('today');
   const [customDateRange, setCustomDateRange] = useState(() => {
     const now = new Date();
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
     return {
       startDate: localDate,
       endDate: localDate
@@ -381,39 +392,52 @@ export function TimesheetDashboard() {
 
     try {
       if (editingEntry) {
-        
-        // Check if we have a valid _id
-        if (!editingEntry._id) {
-          alert('Cannot edit entry: Missing database ID. Please refresh the page and try again.');
+        // Update existing entry - improved ID handling
+        const entryId = editingEntry._id || editingEntry.id || editingEntry.timestamp;
+        if (!entryId) {
+          alert('Cannot edit entry: Missing database identifier. Please refresh the page and try again.');
           return;
         }
         
+        console.log('Updating entry with ID:', entryId, 'Entry data:', editEntry);
+        
         // Update existing entry
         await apiService.updateTimesheet({
-          _id: editingEntry._id,
+          _id: entryId,
           timestamp: editingEntry.timestamp,
           date: editEntry.date,
           clockIn: editEntry.clockIn,
           clockOut: editEntry.clockOut,
-          project: editEntry.project
+          project: editEntry.project || selectedProject
         });
+        
+        console.log('Entry updated successfully');
       } else {
         // Create new manual entry
+        console.log('Creating new manual entry:', editEntry);
         await apiService.createManualEntry({
           date: editEntry.date,
           clockIn: editEntry.clockIn,
           clockOut: editEntry.clockOut,
-          project: editEntry.project
+          project: editEntry.project || selectedProject
         });
+        console.log('New manual entry created successfully');
       }
       
       setShowEditEntry(false);
       setEditingEntry(null);
-      await loadTimesheets();
-      alert('Time entry updated successfully');
+      
+      // Reload both timesheet data and summary
+      await Promise.all([
+        loadTimesheets(),
+        loadTimesheetsForSummary()
+      ]);
+      
+      alert(editingEntry ? 'Time entry updated successfully' : 'New time entry created successfully');
     } catch (error) {
       console.error('Save entry error:', error);
-      alert(`Failed to update time entry: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to ${editingEntry ? 'update' : 'create'} time entry: ${errorMessage}`);
     }
   };
 

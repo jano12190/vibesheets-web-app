@@ -25,33 +25,32 @@ export default async function handler(req, res) {
 
       // Handle period-based filtering
       if (period && !startDate && !endDate) {
-        // Adjust for Mountain Daylight Time (UTC-6)
+        // Use current UTC time - let frontend handle timezone conversions
         const now = new Date();
-        const mdtTime = new Date(now.getTime() - (6 * 60 * 60 * 1000));
         let calculatedStartDate, calculatedEndDate;
 
         switch (period) {
           case 'today': {
-            const localDate = `${mdtTime.getFullYear()}-${String(mdtTime.getMonth() + 1).padStart(2, '0')}-${String(mdtTime.getDate()).padStart(2, '0')}`;
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             calculatedStartDate = localDate;
             calculatedEndDate = localDate;
             break;
           }
           case 'this-week': {
             // Get start of this week (Sunday) in user's timezone
-            const currentDay = mdtTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
             const daysSinceSunday = currentDay;
-            const sundayDate = new Date(mdtTime.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
+            const sundayDate = new Date(now.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
             
             calculatedStartDate = `${sundayDate.getFullYear()}-${String(sundayDate.getMonth() + 1).padStart(2, '0')}-${String(sundayDate.getDate()).padStart(2, '0')}`;
-            calculatedEndDate = `${mdtTime.getFullYear()}-${String(mdtTime.getMonth() + 1).padStart(2, '0')}-${String(mdtTime.getDate()).padStart(2, '0')}`;
+            calculatedEndDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             break;
           }
           case 'last-week': {
             // Get last week (previous Sunday to Saturday)
-            const currentDay = mdtTime.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
             const daysSinceSunday = currentDay;
-            const thisWeekSunday = new Date(mdtTime.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
+            const thisWeekSunday = new Date(now.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
             const lastWeekSunday = new Date(thisWeekSunday.getTime() - (7 * 24 * 60 * 60 * 1000));
             const lastWeekSaturday = new Date(thisWeekSunday.getTime() - (24 * 60 * 60 * 1000));
             
@@ -60,8 +59,8 @@ export default async function handler(req, res) {
             break;
           }
           case 'this-month': {
-            const startOfMonth = new Date(mdtTime.getFullYear(), mdtTime.getMonth(), 1);
-            const endOfMonth = new Date(mdtTime.getFullYear(), mdtTime.getMonth() + 1, 0);
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
             calculatedStartDate = `${startOfMonth.getFullYear()}-${String(startOfMonth.getMonth() + 1).padStart(2, '0')}-${String(startOfMonth.getDate()).padStart(2, '0')}`;
             calculatedEndDate = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
             break;

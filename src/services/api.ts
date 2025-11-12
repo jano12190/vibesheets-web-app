@@ -73,16 +73,18 @@ class ApiService {
   }
 
   async clockIn(projectId: string): Promise<ClockResponse> {
-    // Get user's local date (not UTC)
+    // Get user's local date in their timezone
     const now = new Date();
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
     
     const response = await this.request<any>('/api/clock', {
       method: 'POST',
       body: JSON.stringify({ 
         action: 'clock_in',
         project_id: projectId,
-        localDate: localDate
+        localDate: localDate,
+        timezone: userTimeZone
       })
     });
     
@@ -94,15 +96,17 @@ class ApiService {
   }
 
   async clockOut(): Promise<ClockResponse> {
-    // Get user's local date (not UTC)
+    // Get user's local date in their timezone
     const now = new Date();
-    const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
     
     const response = await this.request<any>('/api/clock', {
       method: 'POST',
       body: JSON.stringify({ 
         action: 'clock_out',
-        localDate: localDate
+        localDate: localDate,
+        timezone: userTimeZone
       })
     });
     
@@ -147,7 +151,10 @@ class ApiService {
 
   async updateTimesheet(entry: any): Promise<{ success: boolean }> {
     
-    // Calculate hours from clock in/out times
+    // Calculate hours from clock in/out times using user's timezone
+    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    // Create proper date objects considering timezone
     const clockInDateTime = new Date(`${entry.date}T${entry.clockIn}`);
     let clockOutDateTime = new Date(`${entry.date}T${entry.clockOut}`);
     
@@ -163,7 +170,9 @@ class ApiService {
       hours: Math.round(hours * 100) / 100,
       project_id: entry.project || 'default',
       clock_in_time: clockInDateTime.toISOString(),
-      clock_out_time: clockOutDateTime.toISOString()
+      clock_out_time: clockOutDateTime.toISOString(),
+      date: entry.date,
+      timezone: userTimeZone
     };
     
     
