@@ -1068,7 +1068,12 @@ export function TimesheetDashboard() {
                 <div key={day.date} className="bg-white/5 rounded-lg p-4">
                   <div className="flex justify-between items-center mb-3">
                     <span className="text-white font-medium">
-                      {format(new Date(day.date), 'EEEE, MMM d, yyyy')}
+                      {(() => {
+                        // Parse date string safely to avoid timezone issues
+                        const [year, month, dayNum] = day.date.split('-').map(Number);
+                        const dateObj = new Date(year, month - 1, dayNum);
+                        return format(dateObj, 'EEEE, MMM d, yyyy');
+                      })()}
                     </span>
                     <span className="text-green-400 font-medium">
                       {day.totalHours.toFixed(1)} hours
