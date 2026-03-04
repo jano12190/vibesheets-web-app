@@ -36,7 +36,7 @@ export function TimesheetDashboard() {
     hourlyRate: '',
     startDate: '',
     endDate: '',
-    invoiceNumber: '', // Will be generated when invoice is actually created
+    invoiceNumber: '',
     businessName: '',
     businessAddress: ''
   });
@@ -55,20 +55,6 @@ export function TimesheetDashboard() {
   const [showArchivedProjects, setShowArchivedProjects] = useState(false);
   const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
-  const [isOnBreak, setIsOnBreak] = useState(false);
-  const [, setBreakStartTime] = useState<Date | null>(null);
-  const [, setShowManualEntry] = useState(false);
-  const [manualEntry, setManualEntry] = useState(() => {
-    const now = new Date();
-    const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localDate = new Intl.DateTimeFormat('en-CA', { timeZone: userTimeZone }).format(now);
-    return {
-      date: localDate,
-      startTime: '',
-      endTime: '',
-      project: ''
-    };
-  });
   const [period, setPeriod] = useState<'today' | 'this-week' | 'last-week' | 'this-month' | 'custom'>('today');
   const [customDateRange, setCustomDateRange] = useState(() => {
     const now = new Date();
@@ -83,70 +69,53 @@ export function TimesheetDashboard() {
 
   useEffect(() => {
     initializeDashboard();
-    
-    // Update current time every second
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
 
-  // Reload timesheets when period or project changes (but not for custom date range changes)
   useEffect(() => {
-    if (loading) return; // Don't reload during initial load
+    if (loading) return;
     if (period !== 'custom') {
       loadTimesheets();
     }
   }, [period, selectedProject]);
 
-  // Separate effect for custom date range changes (only when custom period is active)
   useEffect(() => {
-    if (loading) return; // Don't reload during initial load
+    if (loading) return;
     if (period === 'custom') {
-      // Only reload if both dates are set
       if (customDateRange.startDate && customDateRange.endDate) {
-        console.log('Auto-loading custom range:', JSON.stringify(customDateRange, null, 2));
         loadTimesheets();
       }
     }
   }, [customDateRange, period, selectedProject]);
 
-  // Update invoice hours when invoice date range changes
   useEffect(() => {
     const updateInvoiceHours = async () => {
       if (showInvoiceModal && invoiceData.startDate && invoiceData.endDate) {
         try {
-          console.log('Updating invoice hours for period:', invoiceData.startDate, 'to', invoiceData.endDate);
           const data = await apiService.getTimesheets({
             period: 'custom',
             startDate: invoiceData.startDate,
             endDate: invoiceData.endDate
           });
-          console.log('Invoice hours data received:', data?.totalHours);
           setInvoiceHours(data?.totalHours || 0);
         } catch (error) {
           console.error('Failed to load invoice hours:', error);
           setInvoiceHours(0);
         }
-      } else {
-        console.log('Invoice hours update skipped:', { showInvoiceModal, startDate: invoiceData.startDate, endDate: invoiceData.endDate });
       }
     };
-    
     updateInvoiceHours();
   }, [invoiceData.startDate, invoiceData.endDate, showInvoiceModal]);
 
-  // Reload projects when archived filter changes
   useEffect(() => {
     loadProjects();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showArchivedProjects]);
 
-  // Reload summary when selected project changes
   useEffect(() => {
     loadTimesheetsForSummary();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProject]);
 
   const handleArchiveProject = async (projectId: string, archive: boolean) => {
@@ -162,7 +131,6 @@ export function TimesheetDashboard() {
 
   const handleDeleteProject = async () => {
     if (!projectToDelete) return;
-    
     try {
       const result = await apiService.deleteProject(projectToDelete);
       if (result.success) {
@@ -181,18 +149,14 @@ export function TimesheetDashboard() {
 
   const initializeDashboard = async () => {
     try {
-      // Initialize auth service first
       await authService.initialize();
-      
       const isAuthenticated = await authService.isAuthenticated();
       if (!isAuthenticated) {
         window.location.href = '/';
         return;
       }
-
       const userData = await authService.getUser();
       setUser(userData || null);
-
       await Promise.all([
         loadClockStatus(),
         loadTimesheets(),
@@ -218,28 +182,18 @@ export function TimesheetDashboard() {
 
   const loadTimesheets = async () => {
     try {
-      const params = period === 'custom' 
-        ? { 
+      const params = period === 'custom'
+        ? {
             period: 'custom' as const,
             startDate: customDateRange.startDate,
             endDate: customDateRange.endDate,
             projectId: selectedProject || undefined
           }
-        : { 
+        : {
             period,
             projectId: selectedProject || undefined
           };
-      console.log('Loading timesheets with params:', JSON.stringify(params, null, 2));
       const data = await apiService.getTimesheets(params);
-      console.log('Received timesheet data:', { 
-        period: params.period, 
-        startDate: params.startDate, 
-        endDate: params.endDate,
-        projectId: params.projectId,
-        totalHours: data.totalHours, 
-        entriesCount: data.timesheets?.length,
-        firstEntryDate: data.timesheets?.[0]?.date
-      });
       setTimesheetData(data);
     } catch (error) {
       console.error('Failed to load timesheets:', error);
@@ -248,7 +202,6 @@ export function TimesheetDashboard() {
 
   const loadTimesheetsForSummary = async () => {
     try {
-      // Always load this-month data for accurate Hours Summary calculations
       const params: any = { period: 'this-month' };
       if (selectedProject) {
         params.projectId = selectedProject;
@@ -264,7 +217,6 @@ export function TimesheetDashboard() {
     try {
       const projectList = await apiService.getProjects(showArchivedProjects);
       setProjects(projectList);
-      // Set first project as selected if none selected and projects exist
       if (!selectedProject && projectList.length > 0) {
         setSelectedProject(projectList[0].id);
       }
@@ -274,18 +226,14 @@ export function TimesheetDashboard() {
   };
 
   const handleClockIn = async () => {
-    // Require project selection before clocking in
     if (!selectedProject) {
-      alert('Please select a project before clocking in. Create a project if you don\'t have one.');
+      alert('Please select a project before clocking in.');
       return;
     }
-    
     setClockLoading(true);
-    
     try {
       await apiService.clockIn(selectedProject);
       await loadClockStatus();
-      // Force load data that includes today for accurate Hours Summary
       await loadTimesheetsForSummary();
       await loadTimesheets();
     } catch (error) {
@@ -298,11 +246,9 @@ export function TimesheetDashboard() {
 
   const handleClockOut = async () => {
     setClockLoading(true);
-    
     try {
       await apiService.clockOut();
       await loadClockStatus();
-      // Force load data that includes today for accurate Hours Summary
       await loadTimesheetsForSummary();
       await loadTimesheets();
     } catch (error) {
@@ -321,27 +267,6 @@ export function TimesheetDashboard() {
     }
   };
 
-  // @ts-ignore - Function used in UI components
-  const exportTimesheets = async (format: 'csv' | 'json') => {
-    try {
-      const result = await apiService.exportTimesheet({ format, period });
-      const blob = new Blob([result.content], { type: format === 'csv' ? 'text/csv' : 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert(`Export failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-  
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-
   const handleEditEntry = (entry: any) => {
     setEditingEntry(entry);
     setEditEntry({
@@ -358,12 +283,10 @@ export function TimesheetDashboard() {
       alert('Cannot delete entry: Missing database ID');
       return;
     }
-
-    const confirmDelete = window.confirm('Are you sure you want to delete this time entry? This action cannot be undone.');
+    const confirmDelete = window.confirm('Are you sure you want to delete this time entry?');
     if (!confirmDelete) return;
-
     try {
-        await apiService.deleteTimesheet(entry._id);
+      await apiService.deleteTimesheet(entry._id);
       await loadTimesheets();
       alert('Time entry deleted successfully');
     } catch (error) {
@@ -374,34 +297,25 @@ export function TimesheetDashboard() {
 
   const saveEditedEntry = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!editEntry.clockIn || !editEntry.clockOut) {
       alert('Please provide both clock in and clock out times');
       return;
     }
-
-    // Check for overnight entries and warn user
     const clockInTime = editEntry.clockIn;
     const clockOutTime = editEntry.clockOut;
     if (clockOutTime <= clockInTime) {
       const confirmOvernight = window.confirm(
-        `Clock out time (${clockOutTime}) is earlier than clock in time (${clockInTime}). This will be treated as an overnight shift ending the next day. Continue?`
+        `Clock out time (${clockOutTime}) is earlier than clock in time (${clockInTime}). This will be treated as an overnight shift. Continue?`
       );
       if (!confirmOvernight) return;
     }
-
     try {
       if (editingEntry) {
-        // Update existing entry - improved ID handling
         const entryId = editingEntry._id || editingEntry.id || editingEntry.timestamp;
         if (!entryId) {
-          alert('Cannot edit entry: Missing database identifier. Please refresh the page and try again.');
+          alert('Cannot edit entry: Missing database identifier.');
           return;
         }
-        
-        console.log('Updating entry with ID:', entryId, 'Entry data:', editEntry);
-        
-        // Update existing entry
         await apiService.updateTimesheet({
           _id: entryId,
           timestamp: editingEntry.timestamp,
@@ -410,84 +324,56 @@ export function TimesheetDashboard() {
           clockOut: editEntry.clockOut,
           project: editEntry.project || selectedProject
         });
-        
-        console.log('Entry updated successfully');
       } else {
-        // Create new manual entry
-        console.log('Creating new manual entry:', editEntry);
         await apiService.createManualEntry({
           date: editEntry.date,
           clockIn: editEntry.clockIn,
           clockOut: editEntry.clockOut,
           project: editEntry.project || selectedProject
         });
-        console.log('New manual entry created successfully');
       }
-      
       setShowEditEntry(false);
       setEditingEntry(null);
-      
-      // Reset edit form but keep the current date (don't force it to today)
       setEditEntry(prev => ({
-        date: prev.date, // Keep the selected date
+        date: prev.date,
         clockIn: '',
         clockOut: '',
         project: ''
       }));
-      
-      // Reload both timesheet data and summary
-      await Promise.all([
-        loadTimesheets(),
-        loadTimesheetsForSummary()
-      ]);
-      
+      await Promise.all([loadTimesheets(), loadTimesheetsForSummary()]);
       alert(editingEntry ? 'Time entry updated successfully' : 'New time entry created successfully');
     } catch (error) {
       console.error('Save entry error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to ${editingEntry ? 'update' : 'create'} time entry: ${errorMessage}`);
+      alert(`Failed to ${editingEntry ? 'update' : 'create'} time entry`);
     }
   };
 
   const handleExportCSV = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
-      const exportParams = csvExportData.period === 'custom' 
-        ? { 
-            format: 'csv' as const, 
+      const exportParams = csvExportData.period === 'custom'
+        ? {
+            format: 'csv' as const,
             period: 'custom' as const,
             startDate: csvExportData.startDate,
             endDate: csvExportData.endDate
           }
         : { format: 'csv' as const, period: csvExportData.period };
-        
-      console.log('Exporting CSV with params:', exportParams);
       const exportData = await apiService.exportTimesheet(exportParams);
-      
-      // Get total hours for the period
       const timesheetData = await apiService.getTimesheets(exportParams);
       const totalHours = timesheetData?.totalHours || 0;
-      
-      // Add total hours to CSV content
       const csvWithTotal = exportData.content + `\n\nTotal Hours,${totalHours.toFixed(2)}`;
-
-      // Create and download CSV
       const blob = new Blob([csvWithTotal], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
-      
       link.setAttribute('href', url);
       link.setAttribute('download', exportData.filename);
       link.style.visibility = 'hidden';
-      
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      
       setShowCSVExportModal(false);
-      alert('CSV export completed successfully with total hours included!');
     } catch (error) {
       console.error('CSV export failed:', error);
       alert(`Failed to export CSV: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -496,608 +382,415 @@ export function TimesheetDashboard() {
 
   const generateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!invoiceData.businessName || !invoiceData.businessAddress || !invoiceData.clientName || !invoiceData.hourlyRate) {
-      alert('Please fill in all required fields (business name, address, client name, and hourly rate)');
+      alert('Please fill in all required fields');
       return;
     }
-
     try {
-      // Generate invoice number only when actually creating invoice
-      const finalInvoiceNumber = invoiceData.invoiceNumber || 
+      const finalInvoiceNumber = invoiceData.invoiceNumber ||
         `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
-      
-      // Use the pre-calculated invoice hours
       const totalHours = invoiceHours;
       const totalAmount = (totalHours * parseFloat(invoiceData.hourlyRate)).toFixed(2);
-      
-      console.log('Invoice calculations:', { totalHours, hourlyRate: invoiceData.hourlyRate, totalAmount });
-      
+
       const invoiceHTML = `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Invoice ${invoiceData.invoiceNumber}</title>
           <style>
-            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; line-height: 1.4; font-size: 14px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .invoice-title { font-size: 24px; color: #2563eb; margin-bottom: 8px; }
-            .invoice-info { display: flex; justify-content: space-between; margin-bottom: 25px; }
-            .client-info, .invoice-details { width: 45%; }
-            .client-info h3, .invoice-details h3 { font-size: 16px; margin-bottom: 8px; }
-            .table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 13px; }
-            .table th, .table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            .table th { background-color: #f8f9fa; font-weight: bold; }
-            .total { text-align: right; font-size: 16px; font-weight: bold; color: #2563eb; margin-top: 15px; }
-            .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; }
-            * { box-sizing: border-box; }
-            @media print { body { margin: 0; } }
+            body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 40px; color: #111827; }
+            .header { margin-bottom: 40px; }
+            .invoice-title { font-size: 32px; font-weight: 600; color: #111827; margin-bottom: 8px; }
+            .invoice-info { display: flex; justify-content: space-between; margin-bottom: 40px; }
+            .info-block h3 { font-size: 12px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; font-weight: 500; }
+            .info-block p { margin: 4px 0; color: #111827; }
+            .table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+            .table th { text-align: left; padding: 12px 0; border-bottom: 2px solid #e5e7eb; font-size: 12px; text-transform: uppercase; color: #6b7280; font-weight: 500; }
+            .table td { padding: 16px 0; border-bottom: 1px solid #f3f4f6; }
+            .total-row { border-top: 2px solid #111827; }
+            .total-row td { padding-top: 16px; font-weight: 600; font-size: 18px; }
+            .footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 14px; }
           </style>
         </head>
         <body>
           <div class="header">
-            <h1 class="invoice-title">INVOICE</h1>
-            <p><strong>${invoiceData.businessName || 'Professional Services'}</strong></p>
-            ${invoiceData.businessAddress ? `<p style="font-size: 12px; margin-top: 5px;">${invoiceData.businessAddress}</p>` : ''}
+            <div class="invoice-title">Invoice</div>
+            <div style="color: #6b7280;">${finalInvoiceNumber}</div>
           </div>
-          
           <div class="invoice-info">
-            <div class="client-info">
-              <h3>Bill To:</h3>
+            <div class="info-block">
+              <h3>From</h3>
+              <p><strong>${invoiceData.businessName}</strong></p>
+              <p>${invoiceData.businessAddress}</p>
+            </div>
+            <div class="info-block">
+              <h3>Bill To</h3>
               <p><strong>${invoiceData.clientName}</strong></p>
               ${invoiceData.clientEmail ? `<p>${invoiceData.clientEmail}</p>` : ''}
             </div>
-            <div class="invoice-details">
-              <h3>Invoice Details:</h3>
-              <p><strong>Invoice #:</strong> ${finalInvoiceNumber}</p>
-              <p><strong>Date:</strong> ${format(new Date(), 'MMM dd, yyyy')}</p>
-              <p><strong>Due:</strong> ${format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM dd, yyyy')}</p>
-              <p><strong>Period:</strong> ${invoiceData.startDate} to ${invoiceData.endDate}</p>
+            <div class="info-block">
+              <h3>Details</h3>
+              <p>Date: ${format(new Date(), 'MMM dd, yyyy')}</p>
+              <p>Due: ${format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'MMM dd, yyyy')}</p>
+              <p>Period: ${invoiceData.startDate} to ${invoiceData.endDate}</p>
             </div>
           </div>
-          
           <table class="table">
             <thead>
               <tr>
                 <th>Description</th>
-                <th>Hours</th>
-                <th>Rate</th>
-                <th>Amount</th>
+                <th style="text-align: right;">Hours</th>
+                <th style="text-align: right;">Rate</th>
+                <th style="text-align: right;">Amount</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>Professional Services - Time Tracking</td>
-                <td>${totalHours.toFixed(2)}</td>
-                <td>$${invoiceData.hourlyRate}/hr</td>
-                <td>$${totalAmount}</td>
+                <td>Professional Services</td>
+                <td style="text-align: right;">${totalHours.toFixed(2)}</td>
+                <td style="text-align: right;">$${invoiceData.hourlyRate}/hr</td>
+                <td style="text-align: right;">$${totalAmount}</td>
+              </tr>
+              <tr class="total-row">
+                <td colspan="3" style="text-align: right;">Total</td>
+                <td style="text-align: right;">$${totalAmount}</td>
               </tr>
             </tbody>
           </table>
-          
-          <div class="total">
-            <p>Total Amount Due: $${totalAmount}</p>
-          </div>
-          
           <div class="footer">
-            <p><strong>Payment Terms:</strong> Net 30 days</p>
-            <p><strong>Note:</strong> This invoice represents professional time tracking services provided during the specified period.</p>
-            <p>Thank you for your business!</p>
+            <p>Payment due within 30 days. Thank you for your business.</p>
           </div>
         </body>
         </html>
       `;
 
-      // Create a temporary div to render HTML for PDF conversion
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = invoiceHTML;
       tempDiv.style.position = 'absolute';
       tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '794px'; // A4 width minus margins (210mm - 16mm = 794px at 96dpi)
-      tempDiv.style.maxWidth = '794px';
+      tempDiv.style.width = '794px';
       tempDiv.style.backgroundColor = 'white';
-      tempDiv.style.padding = '20px';
-      tempDiv.style.boxSizing = 'border-box';
       document.body.appendChild(tempDiv);
-      
+
       try {
-        // Convert HTML to canvas
         const canvas = await html2canvas(tempDiv, {
-          scale: 1.5, // Reduced scale for better fit
+          scale: 2,
           useCORS: true,
-          backgroundColor: '#ffffff',
-          width: tempDiv.scrollWidth,
-          height: tempDiv.scrollHeight
+          backgroundColor: '#ffffff'
         });
-        
-        // Create PDF from canvas with proper margins
         const imgData = canvas.toDataURL('image/png');
         const pdf = new jsPDF('p', 'mm', 'a4');
-        
-        const pageWidth = 210; // A4 width in mm
-        const pageHeight = 297; // A4 height in mm
-        const margin = 10; // 10mm margins
-        const imgWidth = pageWidth - (margin * 2); // Content width
+        const pageWidth = 210;
+        const margin = 10;
+        const imgWidth = pageWidth - (margin * 2);
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        let heightLeft = imgHeight;
-        let position = margin; // Start with top margin
-        
-        // Add first page with margins
-        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-        heightLeft -= (pageHeight - (margin * 2));
-        
-        // Add additional pages if needed
-        while (heightLeft >= 0) {
-          position = margin - (imgHeight - heightLeft);
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-          heightLeft -= (pageHeight - (margin * 2));
-        }
-        
-        // Update state with generated invoice number for display
+        pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
         setInvoiceData(prev => ({ ...prev, invoiceNumber: finalInvoiceNumber }));
-        
-        // Download the PDF
         pdf.save(`invoice-${finalInvoiceNumber}.pdf`);
-        
-      } catch (error) {
-        console.error('PDF generation failed:', error);
-        alert('PDF generation failed. Please try again.');
       } finally {
-        // Clean up
         document.body.removeChild(tempDiv);
       }
-      
       setShowInvoiceModal(false);
-      alert('Invoice PDF generated and downloaded successfully!');
+      alert('Invoice generated successfully!');
     } catch (error) {
       alert('Failed to generate invoice');
     }
   };
 
-  // @ts-ignore - Function used in UI components
-  const handleBreak = async () => {
-    if (isOnBreak) {
-      // End break
-      setIsOnBreak(false);
-      setBreakStartTime(null);
-      alert('Break ended. You can continue working.');
-    } else {
-      // Start break
-      setIsOnBreak(true);
-      setBreakStartTime(new Date());
-      alert('Break started. Time tracking is paused.');
-    }
-  };
-
-  // @ts-ignore - Function used in UI components
-  const handleManualEntry = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!manualEntry.startTime || !manualEntry.endTime) {
-      alert('Please provide both start and end times');
-      return;
-    }
-
-    const startDateTime = new Date(`${manualEntry.date}T${manualEntry.startTime}`);
-    const endDateTime = new Date(`${manualEntry.date}T${manualEntry.endTime}`);
-    
-    if (endDateTime <= startDateTime) {
-      alert('End time must be after start time');
-      return;
-    }
-
-    const hours = (endDateTime.getTime() - startDateTime.getTime()) / (1000 * 60 * 60);
-    
-    try {
-      // Add manual entry (mock implementation)
-      setShowManualEntry(false);
-      setManualEntry({
-        date: new Date().toISOString().split('T')[0],
-        startTime: '',
-        endTime: '',
-        project: ''
-      });
-      await loadTimesheets();
-      alert(`Manual entry added: ${hours.toFixed(2)} hours`);
-    } catch (error) {
-      alert('Failed to add manual entry');
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800">
-        <div className="text-white text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Loading dashboard...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-violet-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-gray-500 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-800">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white/10 backdrop-blur-lg border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Vibesheets</h1>
-              <p className="text-white/80">Welcome back, {user?.name || user?.email}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-white text-sm">
-                {format(currentTime, 'PPp')}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
+      <header className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-semibold text-violet-600">Vibesheets</h1>
+            <p className="text-sm text-gray-500">{user?.name || user?.email}</p>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">{format(currentTime, 'PPp')}</span>
+            <button
+              onClick={handleLogout}
+              className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              Log out
+            </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Project Management */}
-        <div className="mb-8">
-          <div className="flex items-end gap-4 mb-4">
-            <div className="w-80">
-              <label className="block text-white/80 text-sm font-medium mb-2">
-                Current Project
-              </label>
-              <select
-                value={selectedProject}
-                onChange={(e) => setSelectedProject(e.target.value)}
-                className="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 h-10"
-                disabled={projects.length === 0}
-              >
-                {projects.length === 0 ? (
-                  <option value="" className="bg-gray-800 text-white">
-                    No projects - Create one first
-                  </option>
-                ) : (
-                  <>
-                    <option value="" className="bg-gray-800 text-white">
-                      Select a project
-                    </option>
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id} className="bg-gray-800 text-white">
-                        {project.name} {project.client ? `(${project.client})` : ''} {project.archived ? '(Archived)' : ''}
-                      </option>
-                    ))}
-                  </>
-                )}
-              </select>
-            </div>
-            <div className="w-48">
-              <label className="block text-white/80 text-sm font-medium mb-2">
-                View Projects
-              </label>
-              <select
-                value={showArchivedProjects ? 'archived' : 'active'}
-                onChange={(e) => setShowArchivedProjects(e.target.value === 'archived')}
-                className="w-full bg-white/10 text-white border border-white/30 rounded-lg px-3 py-2 h-10"
-              >
-                <option value="active" className="bg-gray-800 text-white">Active Projects</option>
-                <option value="archived" className="bg-gray-800 text-white">Archived Projects</option>
-              </select>
-            </div>
-            <button 
-              onClick={() => setShowCreateProject(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium h-10"
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {/* Project Selection */}
+        <div className="mb-8 flex items-end gap-4">
+          <div className="flex-1 max-w-xs">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+            <select
+              value={selectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+              disabled={projects.length === 0}
             >
-              Create Project
-            </button>
-          </div>
-          
-          {/* Project Actions */}
-          {selectedProject && (
-            <div className="flex gap-2">
-              {!showArchivedProjects ? (
-                <button
-                  onClick={() => handleArchiveProject(selectedProject, true)}
-                  className="bg-orange-500 hover:bg-orange-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
-                >
-                  Archive Project
-                </button>
+              {projects.length === 0 ? (
+                <option value="">No projects - Create one first</option>
               ) : (
-                <button
-                  onClick={() => handleArchiveProject(selectedProject, false)}
-                  className="bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
-                >
-                  Unarchive Project
-                </button>
+                <>
+                  <option value="">Select a project</option>
+                  {projects.map(project => (
+                    <option key={project.id} value={project.id}>
+                      {project.name} {project.client ? `(${project.client})` : ''} {project.archived ? '[Archived]' : ''}
+                    </option>
+                  ))}
+                </>
               )}
+            </select>
+          </div>
+          <select
+            value={showArchivedProjects ? 'archived' : 'active'}
+            onChange={(e) => setShowArchivedProjects(e.target.value === 'archived')}
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+          >
+            <option value="active">Active</option>
+            <option value="archived">Archived</option>
+          </select>
+          <button
+            onClick={() => setShowCreateProject(true)}
+            className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
+          >
+            New Project
+          </button>
+          {selectedProject && (
+            <>
+              <button
+                onClick={() => handleArchiveProject(selectedProject, !showArchivedProjects)}
+                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                {showArchivedProjects ? 'Unarchive' : 'Archive'}
+              </button>
               <button
                 onClick={() => {
                   setProjectToDelete(selectedProject);
                   setShowDeleteProjectModal(true);
                 }}
-                className="bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-xs font-medium transition-colors"
+                className="px-3 py-2 text-sm text-red-600 hover:text-red-700 transition-colors"
               >
-                Delete Project
+                Delete
               </button>
-            </div>
+            </>
           )}
         </div>
 
-        {/* Top Row: Time Clock and Hours Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch mb-8">
-          {/* Clock In/Out Section */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 h-full">
-              <h2 className="text-xl font-semibold text-white mb-6 text-center">Time Clock</h2>
-              
-              <div className="text-center mb-6">
-                <div className="text-4xl font-semibold text-white mb-2">
-                  {format(currentTime, 'h:mm:ss a')}
-                </div>
-                <div className="text-white/80 text-sm">
-                  {format(currentTime, 'EEEE, MMM d')} • {Intl.DateTimeFormat().resolvedOptions().timeZone.replace('_', ' ')}
-                </div>
+        {/* Main Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          {/* Time Clock */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:shadow-violet-600/5 transition-all">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Time Clock</h2>
+            <div className="text-center">
+              <div className="text-4xl font-semibold text-gray-900 mb-1">
+                {format(currentTime, 'h:mm:ss a')}
+              </div>
+              <div className="text-sm text-gray-500 mb-6">
+                {format(currentTime, 'EEEE, MMM d')}
               </div>
 
-
-              {/* Status */}
               {clockStatus && (
-                <div className="mb-6 text-center">
-                  <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                    clockStatus.isClockedIn 
-                      ? 'bg-green-500/20 text-green-200 border border-green-400/30'
-                      : 'bg-gray-500/20 text-gray-200 border border-gray-400/30'
+                <div className="mb-6">
+                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                    clockStatus.isClockedIn
+                      ? 'bg-green-50 text-green-700'
+                      : 'bg-gray-100 text-gray-600'
                   }`}>
-                    <div className={`w-2 h-2 rounded-full mr-2 ${
-                      clockStatus.isClockedIn ? 'bg-green-400' : 'bg-gray-400'
-                    }`}></div>
+                    <span className={`w-2 h-2 rounded-full ${
+                      clockStatus.isClockedIn ? 'bg-green-500' : 'bg-gray-400'
+                    }`}></span>
                     {clockStatus.isClockedIn ? 'Clocked In' : 'Clocked Out'}
-                  </div>
-                  
+                  </span>
                 </div>
               )}
 
-              {/* Clock Buttons */}
-              <div className="space-y-3">
-                <div className="flex justify-center">
-                  {clockStatus?.isClockedIn ? (
-                    <button
-                      onClick={handleClockOut}
-                      disabled={clockLoading}
-                      className="bg-red-500 hover:bg-red-600 text-white py-3 px-8 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                    >
-                      {clockLoading ? 'Clocking Out...' : 'Clock Out'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleClockIn}
-                      disabled={clockLoading}
-                      className="bg-green-500 hover:bg-green-600 text-white py-3 px-8 rounded-lg font-semibold transition-colors disabled:opacity-50"
-                    >
-                      {clockLoading ? 'Clocking In...' : 'Clock In'}
-                    </button>
-                  )}
-                </div>
-              </div>
+              {clockStatus?.isClockedIn ? (
+                <button
+                  onClick={handleClockOut}
+                  disabled={clockLoading}
+                  className="w-full py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-all shadow-lg shadow-red-600/25 hover:shadow-xl hover:shadow-red-600/30 disabled:opacity-50"
+                >
+                  {clockLoading ? 'Clocking Out...' : 'Clock Out'}
+                </button>
+              ) : (
+                <button
+                  onClick={handleClockIn}
+                  disabled={clockLoading}
+                  className="w-full py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-all shadow-lg shadow-green-600/25 hover:shadow-xl hover:shadow-green-600/30 disabled:opacity-50"
+                >
+                  {clockLoading ? 'Clocking In...' : 'Clock In'}
+                </button>
+              )}
             </div>
           </div>
 
           {/* Hours Summary */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 h-full">
-              <h2 className="text-xl font-semibold text-white mb-6 text-center">Hours Summary</h2>
-              
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-green-400 mb-1">
-                    {(() => {
-                      if (!summaryData?.timesheets) return '0.0';
-                      // Get today in user's timezone
-                      const now = new Date();
-                      const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                      const todayInUserTZ = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(now);
-                      const todayEntry = summaryData.timesheets.find(day => day.date === todayInUserTZ);
-                      return (todayEntry?.totalHours || 0).toFixed(1);
-                    })()}
-                  </div>
-                  <div className="text-white/80 text-sm">Hours Today</div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-blue-400 mb-1">
-                    {(() => {
-                      if (!summaryData?.timesheets) return '0.0';
-                      // Get start of this week (Sunday) in user's timezone
-                      const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-                      const now = new Date();
-                      
-                      // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-                      const currentDay = now.getDay();
-                      
-                      // Calculate days since Sunday
-                      const daysSinceSunday = currentDay;
-                      
-                      // Get Sunday date
-                      const sundayDate = new Date(now.getTime() - (daysSinceSunday * 24 * 60 * 60 * 1000));
-                      const thisWeekStart = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(sundayDate);
-                      
-                      const weekTotal = summaryData.timesheets
-                        .filter(day => day.date >= thisWeekStart)
-                        .reduce((sum, day) => sum + day.totalHours, 0);
-                      return weekTotal.toFixed(1);
-                    })()}
-                  </div>
-                  <div className="text-white/80 text-sm">Hours This Week</div>
-                </div>
-                
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-purple-400 mb-1">
-                    {summaryData?.totalHours?.toFixed(1) || '0.0'}
-                  </div>
-                  <div className="text-white/80 text-sm">Hours This Month</div>
-                </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:shadow-violet-600/5 transition-all">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Hours Summary</h2>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Today</span>
+                <span className="text-2xl font-semibold text-gray-900">
+                  {(() => {
+                    if (!summaryData?.timesheets) return '0.0';
+                    const now = new Date();
+                    const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const todayInUserTZ = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(now);
+                    const todayEntry = summaryData.timesheets.find(day => day.date === todayInUserTZ);
+                    return (todayEntry?.totalHours || 0).toFixed(1);
+                  })()}h
+                </span>
               </div>
-
-              {/* Export Options */}
-              <div className="mt-8 flex gap-3">
-                <button 
-                  onClick={() => {
-                    setShowInvoiceModal(true);
-                    // Initialize with current timesheet data
-                    setInvoiceHours(timesheetData?.totalHours || 0);
-                  }}
-                  className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
-                >
-                  Download Invoice (PDF)
-                </button>
-                <button 
-                  onClick={() => setShowCSVExportModal(true)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 px-4 rounded-lg font-medium transition-colors text-sm"
-                >
-                  Download Hours (CSV)
-                </button>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">This Week</span>
+                <span className="text-2xl font-semibold text-gray-900">
+                  {(() => {
+                    if (!summaryData?.timesheets) return '0.0';
+                    const localTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                    const now = new Date();
+                    const currentDay = now.getDay();
+                    const sundayDate = new Date(now.getTime() - (currentDay * 24 * 60 * 60 * 1000));
+                    const thisWeekStart = new Intl.DateTimeFormat('en-CA', { timeZone: localTimeZone }).format(sundayDate);
+                    const weekTotal = summaryData.timesheets
+                      .filter(day => day.date >= thisWeekStart)
+                      .reduce((sum, day) => sum + day.totalHours, 0);
+                    return weekTotal.toFixed(1);
+                  })()}h
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">This Month</span>
+                <span className="text-2xl font-semibold text-violet-600">
+                  {summaryData?.totalHours?.toFixed(1) || '0.0'}h
+                </span>
               </div>
             </div>
           </div>
 
+          {/* Export */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md hover:shadow-violet-600/5 transition-all">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Export</h2>
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowInvoiceModal(true)}
+                className="w-full py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm"
+              >
+                Generate Invoice (PDF)
+              </button>
+              <button
+                onClick={() => setShowCSVExportModal(true)}
+                className="w-full py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm"
+              >
+                Export Hours (CSV)
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Row: Time Entries and Account */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Time Entries Management */}
-          <div className="lg:col-span-2">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 h-full">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-white text-center">Time Entries</h2>
-              </div>
-
-          {/* Filter Controls and Add Button */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <label className="text-white/80 text-sm">Filter by:</label>
-                <select 
-                  value={period}
-                  onChange={(e) => {
-                    const newPeriod = e.target.value as 'today' | 'this-week' | 'last-week' | 'this-month' | 'custom';
-                    setPeriod(newPeriod);
-                    if (newPeriod === 'custom') {
-                      setShowCustomDateRange(true);
-                    } else {
-                      setShowCustomDateRange(false);
-                    }
-                  }}
-                  className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
-                >
-                  <option value="today" className="bg-gray-800 text-white">Today</option>
-                  <option value="this-week" className="bg-gray-800 text-white">This Week</option>
-                  <option value="last-week" className="bg-gray-800 text-white">Last Week</option>
-                  <option value="this-month" className="bg-gray-800 text-white">This Month</option>
-                  <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
-                </select>
-              </div>
-              <button 
+        {/* Time Entries */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Time Entries</h2>
+            <div className="flex items-center gap-3">
+              <select
+                value={period}
+                onChange={(e) => {
+                  const newPeriod = e.target.value as typeof period;
+                  setPeriod(newPeriod);
+                  setShowCustomDateRange(newPeriod === 'custom');
+                }}
+                className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                <option value="today">Today</option>
+                <option value="this-week">This Week</option>
+                <option value="last-week">Last Week</option>
+                <option value="this-month">This Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              <button
                 onClick={() => setShowEditEntry(true)}
-                className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
+                className="px-4 py-1.5 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
               >
                 Add Entry
               </button>
             </div>
           </div>
 
-          {/* Custom Date Range */}
           {showCustomDateRange && (
-            <div className="mb-6 bg-white/5 rounded-lg p-4">
-              <div className="flex items-center gap-4">
-                <div>
-                  <label className="block text-white/80 text-sm mb-2">Start Date</label>
-                  <input
-                    type="date"
-                    value={customDateRange.startDate}
-                    onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
-                    className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-white/80 text-sm mb-2">End Date</label>
-                  <input
-                    type="date"
-                    value={customDateRange.endDate}
-                    onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
-                    className="bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
-                  />
-                </div>
-                <div className="flex gap-2 mt-6">
-                  <button
-                    onClick={() => {
-                      console.log('Apply custom date range:', JSON.stringify(customDateRange, null, 2));
-                      // Force a reload to ensure fresh data
-                      loadTimesheets();
-                    }}
-                    className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Apply
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowCustomDateRange(false);
-                      setPeriod('today');
-                      // useEffect will handle the loadTimesheets call when period changes
-                    }}
-                    className="bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg flex items-end gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  value={customDateRange.startDate}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, startDate: e.target.value })}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
               </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">End Date</label>
+                <input
+                  type="date"
+                  value={customDateRange.endDate}
+                  onChange={(e) => setCustomDateRange({ ...customDateRange, endDate: e.target.value })}
+                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              </div>
+              <button
+                onClick={loadTimesheets}
+                className="px-4 py-1.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Apply
+              </button>
             </div>
           )}
-          
-          {/* Time Entries List */}
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+
+          <div className="space-y-4">
             {timesheetData?.timesheets && timesheetData.timesheets.length > 0 ? (
               timesheetData.timesheets.map((day) => (
-                <div key={day.date} className="bg-white/5 rounded-lg p-4">
+                <div key={day.date} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
                   <div className="flex justify-between items-center mb-3">
-                    <span className="text-white font-medium">
+                    <span className="text-sm font-medium text-gray-900">
                       {(() => {
-                        // Parse date string safely to avoid timezone issues
                         const [year, month, dayNum] = day.date.split('-').map(Number);
                         const dateObj = new Date(year, month - 1, dayNum);
                         return format(dateObj, 'EEEE, MMM d, yyyy');
                       })()}
                     </span>
-                    <span className="text-green-400 font-medium">
+                    <span className="text-sm font-medium text-violet-600">
                       {day.totalHours.toFixed(1)} hours
                     </span>
                   </div>
-                  
                   <div className="space-y-2">
                     {day.entries.length > 0 ? (
-                      // Display work sessions (each entry has both clock in and out times)
-                      day.entries.map((entry, sessionIndex) => (
-                        <div key={sessionIndex} className="flex justify-between items-center text-white/80 bg-white/5 rounded px-3 py-2">
-                          <div className="flex items-center gap-4">
-                            <span className="text-green-400">
+                      day.entries.map((entry, idx) => (
+                        <div key={idx} className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-4 text-sm">
+                            <span className="text-green-600">
                               {entry.clock_in_time ? format(new Date(entry.clock_in_time), 'h:mm a') : 'N/A'}
                             </span>
-                            <span className="text-white/40">→</span>
-                            <span className="text-red-400">
+                            <span className="text-gray-400">→</span>
+                            <span className="text-red-600">
                               {entry.clockOutTime ? format(new Date(entry.clockOutTime), 'h:mm a') : 'N/A'}
                             </span>
-                            {(entry.hours && entry.hours > 0) && (
-                              <span className="text-xs text-white/60">
-                                ({entry.hours.toFixed(1)} hours)
-                              </span>
+                            {entry.hours && entry.hours > 0 && (
+                              <span className="text-gray-400">({entry.hours.toFixed(1)}h)</span>
                             )}
                           </div>
-                          <div className="flex gap-1">
-                            <button 
+                          <div className="flex items-center gap-1">
+                            <button
                               onClick={() => handleEditEntry({
                                 _id: entry._id,
                                 timestamp: entry.timestamp,
@@ -1105,17 +798,15 @@ export function TimesheetDashboard() {
                                 type: 'session',
                                 date: entry.date
                               })}
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 p-2 rounded transition-colors"
-                              title="Edit entry"
+                              className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleDeleteEntry(entry)}
-                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 p-2 rounded transition-colors"
-                              title="Delete entry"
+                              className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1125,496 +816,367 @@ export function TimesheetDashboard() {
                         </div>
                       ))
                     ) : (
-                      <div className="text-white/60 text-center py-4">
-                        No time entries for this day
-                      </div>
+                      <p className="text-sm text-gray-400">No entries</p>
                     )}
                   </div>
                 </div>
               ))
             ) : (
-              <div className="text-white/60 text-center py-8">
-                <p>No time entries found.</p>
-                <p className="text-sm mt-2">Start by clocking in or add a manual entry.</p>
+              <div className="text-center py-12">
+                <p className="text-gray-500">No time entries found.</p>
+                <p className="text-sm text-gray-400 mt-1">Clock in to start tracking or add a manual entry.</p>
               </div>
             )}
           </div>
-            </div>
-          </div>
-
-          {/* Account Card */}
-          <div className="lg:col-span-1">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 h-full">
-              <h2 className="text-xl font-semibold text-white mb-6 text-center">Account</h2>
-              
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-xl font-bold text-white">
-                    {user?.email?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-                <p className="text-white text-lg">{user?.email}</p>
-                <p className="text-white/60 text-sm mt-1">Signed in with Auth0</p>
-              </div>
-
-              <div className="mt-8 pt-6 border-t border-white/20 text-center">
-                <p className="text-red-200/80 text-sm mb-4">
-                  This action cannot be undone. All your data will be permanently deleted.
-                </p>
-                <button className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 rounded-lg font-medium transition-colors">
-                  Delete Account
-                </button>
-              </div>
-            </div>
-          </div>
-
         </div>
+      </div>
 
-        {/* Edit Times Modal */}
-        {showEditEntry && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
-              <h3 className="text-xl font-semibold text-white mb-2">
-                {editingEntry ? 'Edit Time Entry' : 'Add Time Entry'}
-              </h3>
-              <p className="text-white/60 text-sm mb-6">
-                Project: {projects.find(p => p.id === selectedProject)?.name || 'General Work'}
-              </p>
-              <form onSubmit={saveEditedEntry} className="space-y-4">
+      {/* Modals */}
+      {showEditEntry && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              {editingEntry ? 'Edit Time Entry' : 'Add Time Entry'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              {projects.find(p => p.id === selectedProject)?.name || 'No project selected'}
+            </p>
+            <form onSubmit={saveEditedEntry} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={editEntry.date}
+                  onChange={(e) => setEditEntry({ ...editEntry, date: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Clock In</label>
                   <input
-                    type="date"
-                    value={editEntry.date}
-                    onChange={(e) => setEditEntry({ ...editEntry, date: e.target.value })}
-                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
+                    type="time"
+                    value={editEntry.clockIn}
+                    onChange={(e) => setEditEntry({ ...editEntry, clockIn: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     required
                   />
                 </div>
-                
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Clock In
-                    </label>
-                    <input
-                      type="time"
-                      value={editEntry.clockIn}
-                      onChange={(e) => setEditEntry({ ...editEntry, clockIn: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Clock Out
-                    </label>
-                    <input
-                      type="time"
-                      value={editEntry.clockOut}
-                      onChange={(e) => setEditEntry({ ...editEntry, clockOut: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowEditEntry(false)}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Invoice Generation Modal */}
-        {showInvoiceModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-lg mx-4 border border-white/20">
-              <h3 className="text-xl font-semibold text-white mb-6">Generate Invoice</h3>
-              <form onSubmit={generateInvoice} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Your Business Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={invoiceData.businessName}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, businessName: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="Your Business Name"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Business Address *
-                    </label>
-                    <input
-                      type="text"
-                      value={invoiceData.businessAddress}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, businessAddress: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="123 Main St, City, State ZIP"
-                      required
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Client Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={invoiceData.clientName}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, clientName: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="Client Company"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Client Email
-                    </label>
-                    <input
-                      type="email"
-                      value={invoiceData.clientEmail}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, clientEmail: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      placeholder="client@email.com"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Hourly Rate ($) *
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={invoiceData.hourlyRate}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, hourlyRate: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Invoice Number
-                    </label>
-                    <input
-                      type="text"
-                      value={invoiceData.invoiceNumber}
-                      onChange={(e) => setInvoiceData({ ...invoiceData, invoiceNumber: e.target.value })}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Period Start
-                    </label>
-                    <input
-                      type="date"
-                      value={invoiceData.startDate}
-                      onChange={(e) => {
-                        console.log('Start date changed to:', e.target.value);
-                        setInvoiceData({ ...invoiceData, startDate: e.target.value });
-                      }}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm font-medium mb-2">
-                      Period End
-                    </label>
-                    <input
-                      type="date"
-                      value={invoiceData.endDate}
-                      onChange={(e) => {
-                        console.log('End date changed to:', e.target.value);
-                        setInvoiceData({ ...invoiceData, endDate: e.target.value });
-                      }}
-                      className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="flex justify-between items-center text-white">
-                    <span>Total Hours:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">{invoiceHours.toFixed(2)}</span>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          console.log('Manual refresh clicked');
-                          if (invoiceData.startDate && invoiceData.endDate) {
-                            try {
-                              const data = await apiService.getTimesheets({
-                                period: 'custom',
-                                startDate: invoiceData.startDate,
-                                endDate: invoiceData.endDate
-                              });
-                              console.log('Manual refresh data:', data?.totalHours);
-                              setInvoiceHours(data?.totalHours || 0);
-                            } catch (error) {
-                              console.error('Manual refresh failed:', error);
-                            }
-                          }
-                        }}
-                        className="text-blue-400 hover:text-blue-300 text-sm"
-                        title="Refresh hours"
-                      >
-                        🔄
-                      </button>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center text-white mt-2">
-                    <span>Total Amount:</span>
-                    <span className="font-semibold text-green-400">
-                      ${(invoiceHours * parseFloat(invoiceData.hourlyRate || '0')).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Download Invoice
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowInvoiceModal(false)}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Create Project Modal */}
-        {showCreateProject && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
-              <h3 className="text-xl font-semibold text-white mb-6">Create New Project</h3>
-              <form onSubmit={async (e) => {
-                e.preventDefault();
-                if (!newProject.name.trim()) {
-                  alert('Please enter a project name');
-                  return;
-                }
-                
-                try {
-                  console.log('Creating project:', newProject);
-                  await apiService.createProject({
-                    name: newProject.name,
-                    client: newProject.client || 'No Client'
-                  });
-                  
-                  // Reload projects and set the new one as selected
-                  const updatedProjects = await apiService.getProjects();
-                  setProjects(updatedProjects);
-                  
-                  // Find and select the newly created project
-                  const newProjectInList = updatedProjects.find(p => p.name === newProject.name);
-                  if (newProjectInList) {
-                    setSelectedProject(newProjectInList.id);
-                  }
-                  
-                  setNewProject({ name: '', client: '' });
-                  setShowCreateProject(false);
-                  alert('Project created successfully!');
-                } catch (error) {
-                  console.error('Failed to create project:', error);
-                  alert('Failed to create project. Please try again.');
-                }
-              }} className="space-y-4">
                 <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Project Name *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Clock Out</label>
                   <input
-                    type="text"
-                    value={newProject.name}
-                    onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
-                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white placeholder-white/60"
-                    placeholder="My Project"
+                    type="time"
+                    value={editEntry.clockOut}
+                    onChange={(e) => setEditEntry({ ...editEntry, clockOut: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     required
-                    autoFocus
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Client Name (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newProject.client}
-                    onChange={(e) => setNewProject({ ...newProject, client: e.target.value })}
-                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white placeholder-white/60"
-                    placeholder="Client Company"
-                  />
-                </div>
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Create Project
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewProject({ name: '', client: '' });
-                      setShowCreateProject(false);
-                    }}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* CSV Export Modal */}
-        {showCSVExportModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
-              <h3 className="text-xl font-semibold text-white mb-6">Export Hours to CSV</h3>
-              <form onSubmit={handleExportCSV} className="space-y-4">
-                <div>
-                  <label className="block text-white/80 text-sm font-medium mb-2">
-                    Time Period
-                  </label>
-                  <select
-                    value={csvExportData.period}
-                    onChange={(e) => setCSVExportData({ ...csvExportData, period: e.target.value as any })}
-                    className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                  >
-                    <option value="today" className="bg-gray-800 text-white">Today</option>
-                    <option value="this-week" className="bg-gray-800 text-white">This Week</option>
-                    <option value="last-week" className="bg-gray-800 text-white">Last Week</option>
-                    <option value="this-month" className="bg-gray-800 text-white">This Month</option>
-                    <option value="custom" className="bg-gray-800 text-white">Custom Range</option>
-                  </select>
-                </div>
-                
-                {csvExportData.period === 'custom' && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-white/80 text-sm font-medium mb-2">
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={csvExportData.startDate}
-                        onChange={(e) => setCSVExportData({ ...csvExportData, startDate: e.target.value })}
-                        className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-white/80 text-sm font-medium mb-2">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={csvExportData.endDate}
-                        onChange={(e) => setCSVExportData({ ...csvExportData, endDate: e.target.value })}
-                        className="w-full bg-white/10 border border-white/30 rounded-lg px-3 py-2 text-white"
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Download CSV
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowCSVExportModal(false)}
-                    className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Project Confirmation Modal */}
-        {showDeleteProjectModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 w-full max-w-md mx-4 border border-white/20">
-              <h3 className="text-xl font-semibold text-white mb-6">Delete Project</h3>
-              <p className="text-white/80 mb-6">
-                Are you sure you want to delete this project? This action cannot be undone.
-                {projectToDelete && (
-                  <span className="block mt-2 font-medium">
-                    Project: {projects.find(p => p.id === projectToDelete)?.name}
-                  </span>
-                )}
-              </p>
-              <div className="flex gap-3">
+              </div>
+              <div className="flex gap-3 pt-4">
                 <button
-                  onClick={handleDeleteProject}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  type="submit"
+                  className="flex-1 py-2.5 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
                 >
-                  Delete Project
+                  Save
                 </button>
                 <button
-                  onClick={() => {
-                    setShowDeleteProjectModal(false);
-                    setProjectToDelete(null);
-                  }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-semibold transition-colors"
+                  type="button"
+                  onClick={() => setShowEditEntry(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showInvoiceModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Generate Invoice</h3>
+            <form onSubmit={generateInvoice} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Your Business Name *</label>
+                  <input
+                    type="text"
+                    value={invoiceData.businessName}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, businessName: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Business Address *</label>
+                  <input
+                    type="text"
+                    value={invoiceData.businessAddress}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, businessAddress: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name *</label>
+                  <input
+                    type="text"
+                    value={invoiceData.clientName}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, clientName: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Email</label>
+                  <input
+                    type="email"
+                    value={invoiceData.clientEmail}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, clientEmail: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate ($) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={invoiceData.hourlyRate}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, hourlyRate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Number</label>
+                  <input
+                    type="text"
+                    value={invoiceData.invoiceNumber}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, invoiceNumber: e.target.value })}
+                    placeholder="Auto-generated"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Period Start</label>
+                  <input
+                    type="date"
+                    value={invoiceData.startDate}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, startDate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Period End</label>
+                  <input
+                    type="date"
+                    value={invoiceData.endDate}
+                    onChange={(e) => setInvoiceData({ ...invoiceData, endDate: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600">Total Hours</span>
+                  <span className="font-medium">{invoiceHours.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Total Amount</span>
+                  <span className="font-semibold text-violet-600">
+                    ${(invoiceHours * parseFloat(invoiceData.hourlyRate || '0')).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
+                >
+                  Download Invoice
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowInvoiceModal(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCreateProject && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Create Project</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!newProject.name.trim()) {
+                alert('Please enter a project name');
+                return;
+              }
+              try {
+                await apiService.createProject({
+                  name: newProject.name,
+                  client: newProject.client || ''
+                });
+                const updatedProjects = await apiService.getProjects();
+                setProjects(updatedProjects);
+                const newProjectInList = updatedProjects.find(p => p.name === newProject.name);
+                if (newProjectInList) {
+                  setSelectedProject(newProjectInList.id);
+                }
+                setNewProject({ name: '', client: '' });
+                setShowCreateProject(false);
+              } catch (error) {
+                alert('Failed to create project');
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Project Name *</label>
+                <input
+                  type="text"
+                  value={newProject.name}
+                  onChange={(e) => setNewProject({ ...newProject, name: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                <input
+                  type="text"
+                  value={newProject.client}
+                  onChange={(e) => setNewProject({ ...newProject, client: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewProject({ name: '', client: '' });
+                    setShowCreateProject(false);
+                  }}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showCSVExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">Export Hours to CSV</h3>
+            <form onSubmit={handleExportCSV} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Time Period</label>
+                <select
+                  value={csvExportData.period}
+                  onChange={(e) => setCSVExportData({ ...csvExportData, period: e.target.value as any })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                >
+                  <option value="today">Today</option>
+                  <option value="this-week">This Week</option>
+                  <option value="last-week">Last Week</option>
+                  <option value="this-month">This Month</option>
+                  <option value="custom">Custom Range</option>
+                </select>
+              </div>
+              {csvExportData.period === 'custom' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      value={csvExportData.startDate}
+                      onChange={(e) => setCSVExportData({ ...csvExportData, startDate: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                    <input
+                      type="date"
+                      value={csvExportData.endDate}
+                      onChange={(e) => setCSVExportData({ ...csvExportData, endDate: e.target.value })}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-all shadow-md shadow-violet-600/25 hover:shadow-lg hover:shadow-violet-600/30"
+                >
+                  Download CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCSVExportModal(false)}
+                  className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteProjectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Project</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to delete "{projects.find(p => p.id === projectToDelete)?.name}"? This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteProject}
+                className="flex-1 py-2.5 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-all shadow-md shadow-red-600/25 hover:shadow-lg hover:shadow-red-600/30"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteProjectModal(false);
+                  setProjectToDelete(null);
+                }}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
