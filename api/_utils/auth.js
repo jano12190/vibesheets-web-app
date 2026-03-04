@@ -131,10 +131,21 @@ async function authenticateUser(req) {
 }
 
 // CORS helper for Vercel
-function setCorsHeaders(res) {
-  res.setHeader('Access-Control-Allow-Origin', process.env.ALLOWED_ORIGINS || 'https://vibesheets.vercel.app');
+function setCorsHeaders(req, res) {
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://vibesheets.vercel.app').split(',');
+  const requestOrigin = req.headers?.origin;
+
+  // Check if the request origin is in our allowed list
+  if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+  } else {
+    // Default to first allowed origin for non-browser requests
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigins[0]);
+  }
+
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
@@ -142,13 +153,13 @@ function setCorsHeaders(res) {
 
 // Handle CORS preflight
 function handleCors(req, res, next) {
-  setCorsHeaders(res);
-  
+  setCorsHeaders(req, res);
+
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
-  
+
   next();
 }
 

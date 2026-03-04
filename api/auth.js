@@ -1,7 +1,7 @@
 const { setCorsHeaders, getAuthConfig } = require('./_utils/auth');
 
 export default function handler(req, res) {
-  setCorsHeaders(res);
+  setCorsHeaders(req, res);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {

@@ -2,7 +2,7 @@ const { connectToDatabase, COLLECTIONS } = require('./_utils/database');
 const { authenticateUser, setCorsHeaders } = require('./_utils/auth');
 
 export default async function handler(req, res) {
-  setCorsHeaders(res);
+  setCorsHeaders(req, res);
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
